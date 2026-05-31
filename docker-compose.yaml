@@ -1,0 +1,111 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: symfony
+      POSTGRES_PASSWORD: symfony
+      POSTGRES_DB: woofie
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U symfony"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Adminer - Interface d'administration de BDD (supporte PostgreSQL + MySQL)
+  adminer:
+    image: adminer:latest
+    container_name: woofie-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DESIGN: pepa-linha
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  # pgAdmin - Interface PostgreSQL (alternative plus complète)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: woofie-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@woofie.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  symfony:
+    build: ./server
+    container_name: woofie-backend
+    environment:
+      DEFAULT_URI: "http://localhost"
+      DATABASE_URL: "postgresql://symfony:symfony@db:5432/woofie?serverVersion=15&charset=utf8"
+      OLLAMA_API_URL: "http://ollama:11434"
+      MESSENGER_TRANSPORT_DSN: "sync://"
+    volumes:
+      - ./server:/var/www/html
+    expose:
+      - "8080"
+    depends_on:
+      - db
+    command: >
+      bash -c "mkdir -p var public/uploads/owners public/uploads/dogs public/uploads/posts &&
+               chown -R www-data:www-data var public/uploads || true &&
+               chmod -R 0775 var public/uploads || true &&
+               php bin/console doctrine:migrations:migrate --no-interaction || true &&
+               php bin/console cache:clear --env=prod || true &&
+               php-fpm"
+
+  nextjs:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: "http://135.125.107.211:8000"
+        NEXT_PUBLIC_WS_ENABLED: "false"
+    container_name: woofie-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: "http://135.125.107.211:8000"
+      NEXT_PUBLIC_WS_ENABLED: "false"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+      - /app/.next
+    expose:
+      - "3000"
+    depends_on:
+      - symfony
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: woofie-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    expose:
+      - "11434"
+    restart: unless-stopped
+    command: serve
+
+  nginx:
+    image: nginx:latest
+    container_name: woofie-nginx
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./server/public/uploads:/var/www/html/public/uploads:ro
+    depends_on:
+      - nextjs
+      - symfony
+
+volumes:
+  db_data:
+  pgadmin_data:
+  ollama_data:

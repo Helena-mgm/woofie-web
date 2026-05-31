@@ -1,0 +1,43 @@
+
+# ============================================================
+# Server .gitignore — Symfony 7.3 backend
+# ============================================================
+
+# ---- Symfony generated / runtime ----
+/var/
+/var/cache/
+/var/log/
+
+# ---- Composer dependencies (restored via `composer install`) ----
+/vendor/
+
+# ---- Symfony cache folder (composer cache, not source) ----
+/cache/
+
+# ---- User-uploaded media (binary, environment-specific) ----
+/public/uploads/
+
+# ---- Environment & secrets ----
+.env
+.env.local
+.env.*.local
+.env.test
+
+# ---- PHPUnit ----
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+# ---- Symfony Asset Mapper ----
+###> symfony/asset-mapper ###
+/public/assets/
+/assets/vendor/
+###< symfony/asset-mapper ###
+
+# ---- macOS ----
+.DS_Store
+
+# ---- IDE ----
+.idea/
+*.swp

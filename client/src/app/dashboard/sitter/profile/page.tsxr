@@ -1,0 +1,29 @@
+r-[#F1E5D4] bg-[#FFF8EF] px-4 py-3">
+              <label className="flex items-center gap-3 text-sm font-semibold text-[#8B4513]">
+                <input
+                  type="checkbox"
+                  checked={form.is_available}
+                  onChange={(e) => setForm((prev) => ({ ...prev, is_available: e.target.checked }))}
+                  className="h-4 w-4 rounded border-[#D2691E] text-[#D2691E] focus:ring-[#D2691E]"
+                />
+                Disponible pour de nouvelles demandes
+              </label>
+              <p className="mt-1 text-xs text-[#8B4513]/70">
+                Décochez si vous ne prenez plus de nouveaux clients actuellement.
+              </p>
+            </section>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-[#6B4A2B]">
+                Les informations sauvegardées seront visibles sur votre profil public.
+              </p>
+              <Button type="submit" disabled={saving || !hasChanges} className="w-full sm:w-auto">
+                {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </ProtectRoute>
+  );
+}

@@ -1,0 +1,34 @@
+# ============================================================
+# Root .gitignore — Woofie Project
+# ============================================================
+
+# ---- macOS system files ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# ---- Node (root level, if any scripts) ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Environment & secrets (NEVER commit) ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.crt
+
+# ---- IDE / Editor ----
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- Docker generated ----
+docker-compose.override.yml
