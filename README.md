@@ -57,7 +57,23 @@ cp server/.env.local.example server/.env.local
 # Then edit server/.env.local with your own values
 ```
 
-### 3. Start all services
+### 3. Install dependencies
+
+> ⚠️ **If `node_modules/` or `vendor/` are missing** (e.g. after cloning the submission archive), install them first:
+
+```bash
+# Frontend — install Node.js packages
+cd client
+npm install
+cd ..
+
+# Backend — install PHP packages
+cd server
+composer install
+cd ..
+```
+
+### 4. Start all services
 
 ```bash
 make up
@@ -459,7 +475,23 @@ cp server/.env.local.example server/.env.local
 # Puis éditez server/.env.local avec vos propres valeurs
 ```
 
-### 3. Lancer tous les services
+### 3. Installer les dépendances
+
+> ⚠️ **Si `node_modules/` ou `vendor/` sont absents** (ex. après avoir cloné l'archive de rendu), installez-les d'abord :
+
+```bash
+# Frontend — installer les packages Node.js
+cd client
+npm install
+cd ..
+
+# Backend — installer les packages PHP
+cd server
+composer install
+cd ..
+```
+
+### 4. Lancer tous les services
 
 ```bash
 make up
