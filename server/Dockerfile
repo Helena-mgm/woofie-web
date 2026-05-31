@@ -28,7 +28,8 @@ RUN mkdir -p public/uploads/owners public/uploads/dogs public/uploads/posts \
  && chown -R www-data:www-data public/uploads \
  && chmod -R 775 public/uploads
 
-RUN chown -R www-data:www-data var
+RUN mkdir -p var/cache var/log \
+ && chown -R www-data:www-data var
 EXPOSE 9000
 
 ENV POI_BBOXES="48.70,2.20,48.95,2.50 45.60,4.60,45.85,4.95"
