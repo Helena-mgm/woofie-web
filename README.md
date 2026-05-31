@@ -120,6 +120,12 @@ Two account types are available:
 - 👤 **Dog Owner**: manages their profile and dogs (ICAD chip/tattoo number validation)
 - 🧑‍💼 **Professional Dog-Sitter**: manages their profile with SIRET business number validation (INSEE API)
 
+> **SIRET de test** : pour créer un compte Dog-Sitter, utilisez le numéro SIRET suivant (valide format + algorithme de Luhn) :
+> ```
+> 73282932000074
+> ```
+> *(SIRET public de la Caisse des Dépôts et Consignations — utilisable librement à des fins de test)*
+
 ---
 
 ## 🛠️ Useful Commands
@@ -511,6 +517,12 @@ Deux types de comptes sont disponibles :
 
 - 👤 **Propriétaire de chien** : gère son profil et ses chiens (validation ICAD)
 - 🧑‍💼 **Dog-sitter professionnel** : gère son profil avec validation SIRET
+
+> **SIRET de test** : pour créer un compte Dog-Sitter, utilisez ce numéro SIRET (format valide + algorithme de Luhn) :
+> ```
+> 73282932000074
+> ```
+> *(SIRET public de la Caisse des Dépôts et Consignations — utilisable librement à des fins de test)*
 
 ---
 
