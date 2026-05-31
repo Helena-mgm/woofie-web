@@ -57,11 +57,11 @@ class HttpClient {
     this.baseURL = baseURL;
   }
 
-  private createAbortSignal(externalSignal?: AbortSignal) {
+  private createAbortSignal(externalSignal?: AbortSignal, customTimeout?: number) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
-    }, API_CONFIG.timeout);
+    }, customTimeout ?? API_CONFIG.timeout);
 
     const abortExternal = () => controller.abort();
 
@@ -213,6 +213,28 @@ class HttpClient {
     }
   }
 
+  async patch<T = unknown>(path: string, body: unknown, timeout?: number): Promise<ApiResponse<T>> {
+    const { signal, cleanup } = this.createAbortSignal(undefined, timeout);
+    try {
+      const response = await fetch(`${this.baseURL}${path}`, {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: JSON.stringify(body),
+        signal,
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      throw new ApiError(ERROR_MESSAGES.network, 0);
+    } finally {
+      cleanup();
+    }
+  }
+
   async delete<T = unknown>(path: string): Promise<ApiResponse<T>> {
     const { signal, cleanup } = this.createAbortSignal();
     try {
@@ -260,6 +282,30 @@ export async function apiPost(path: string, body: unknown) {
 export async function apiPut(path: string, body: unknown) {
   try {
     const response = await apiClient.put(path, body);
+    return { ok: true, status: response.status, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { ok: false, status: error.status, data: error.data };
+    }
+    return { ok: false, status: 0, data: { error: ERROR_MESSAGES.network } };
+  }
+}
+
+export async function apiPatch(path: string, body: unknown, timeout?: number) {
+  try {
+    const response = await apiClient.patch(path, body, timeout);
+    return { ok: true, status: response.status, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { ok: false, status: error.status, data: error.data };
+    }
+    return { ok: false, status: 0, data: { error: ERROR_MESSAGES.network } };
+  }
+}
+
+export async function apiDelete(path: string) {
+  try {
+    const response = await apiClient.delete(path);
     return { ok: true, status: response.status, data: response.data };
   } catch (error) {
     if (error instanceof ApiError) {

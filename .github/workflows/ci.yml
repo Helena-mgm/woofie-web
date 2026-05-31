@@ -1,0 +1,132 @@
+name: CI — Woofie
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # JOB 1 : Tests backend Symfony (PHPUnit)
+  # ──────────────────────────────────────────────────────────────
+  backend-tests:
+    name: 🐘 Backend — PHPUnit
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: woofie_test
+          POSTGRES_USER: symfony
+          POSTGRES_PASSWORD: symfony
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo, pdo_pgsql, intl, zip, gd
+          coverage: none
+
+      - name: 📦 Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: server/vendor
+          key: composer-${{ hashFiles('server/composer.lock') }}
+          restore-keys: composer-
+
+      - name: 📦 Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: ⚙️ Configure test environment
+        run: |
+          cat > .env.test.local << 'EOF'
+          DATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie_test?serverVersion=15&charset=utf8"
+          JWT_SECRET="ci_test_secret_not_for_production"
+          APP_ENV=test
+          APP_SECRET=ci_app_secret_not_for_production
+          EOF
+
+      - name: 🗄️ Create test database & run migrations
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists
+          php bin/console doctrine:migrations:migrate --env=test --no-interaction
+
+      - name: 🧪 Run PHPUnit tests
+        run: php bin/phpunit --testdox
+
+      - name: 📊 Upload test results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpunit-results
+          path: server/.phpunit.cache/
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 2 : Lint frontend Next.js (ESLint + TypeScript)
+  # ──────────────────────────────────────────────────────────────
+  frontend-lint:
+    name: ⚛️ Frontend — ESLint & TypeScript
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: 📦 Install npm dependencies
+        run: npm ci
+
+      - name: 🔍 ESLint
+        run: npm run lint
+
+      - name: 🔷 TypeScript type-check
+        run: npx tsc --noEmit
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 3 : Validation Docker Compose (build smoke test)
+  # ──────────────────────────────────────────────────────────────
+  docker-build:
+    name: 🐳 Docker — Build smoke test
+    runs-on: ubuntu-latest
+    # On skip ce job sur les PR pour économiser les minutes CI
+    if: github.event_name == 'push'
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐳 Validate docker-compose syntax
+        run: docker compose config --quiet
+
+      - name: 🔨 Build backend image
+        run: docker build -t woofie-backend ./server
+
+      - name: 🔨 Build frontend image
+        run: docker build -t woofie-frontend ./client

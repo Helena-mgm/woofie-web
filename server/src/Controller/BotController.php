@@ -109,24 +109,17 @@ class BotController extends AbstractController
         // Récupérer ou créer la conversation bot
         if ($conversationId) {
             $conversation = $this->conversationRepo->find($conversationId);
-            if (!$conversation || $conversation->getType() !== 'bot') {
+            if (!$conversation || $conversation->getType() !== 'bot' || !$conversation->getParticipants()->contains($user)) {
                 return $this->json(['error' => 'Invalid bot conversation'], 404);
             }
         } else {
-            // Pas de conversationId fourni, on récupère ou crée la conversation bot
-            $conversation = $this->conversationRepo->findOneBy(['type' => 'bot']);
-            
-            if (!$conversation) {
-                $conversation = new Conversation();
-                $conversation->setType('bot');
-                $conversation->setName('WoofieBot 🐕');
-                $conversation->addParticipant($user);
-                $this->em->persist($conversation);
-                $this->em->flush();
-            } elseif (!$conversation->getParticipants()->contains($user)) {
-                $conversation->addParticipant($user);
-                $this->em->flush();
-            }
+            // Pas de conversationId fourni, on crée une nouvelle conversation bot
+            $conversation = new Conversation();
+            $conversation->setType('bot');
+            $conversation->setName(mb_substr($userMessage, 0, 30) . '...');
+            $conversation->addParticipant($user);
+            $this->em->persist($conversation);
+            $this->em->flush();
         }
 
         $history = $this->messageRepo->findBy(
@@ -162,6 +155,7 @@ class BotController extends AbstractController
 
         return $this->json([
             'id' => $botMessage->getId(),
+            'conversationId' => $conversation->getId(),
             'content' => $botMessage->getContent(),
             'createdAt' => $botMessage->getCreatedAt()->format('c'),
             'sender' => 'bot',
