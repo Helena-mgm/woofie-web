@@ -415,7 +415,7 @@ Deux rôles : `ROLE_USER` (tous les utilisateurs authentifiés) et séparation m
 
 ## 📄 License
 
-Project built as part of the **Epitech Web Académie — Class of 2025** curriculum.
+Project built as part of the **IPSSI** curriculum.
 
 ---
 
