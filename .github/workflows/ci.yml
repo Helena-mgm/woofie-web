@@ -51,14 +51,14 @@ jobs:
           key: composer-${{ hashFiles('server/composer.lock') }}
           restore-keys: composer-
 
-      - name: 📦 Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
       - name: ⚙️ Configure test environment
         working-directory: server
         run: |
           printf 'APP_ENV=test\nAPP_SECRET=ci_secret\nDATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie?serverVersion=15&charset=utf8"\nJWT_SECRET=ci_jwt_secret\nMESSENGER_TRANSPORT_DSN=sync://\nOLLAMA_API_URL=http://localhost:11434\nDEFAULT_URI=http://localhost/\n' > .env
           printf 'DATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie_test?serverVersion=15&charset=utf8"\n' > .env.test.local
+
+      - name: 📦 Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: 🗄️ Create test database & run migrations
         run: |
