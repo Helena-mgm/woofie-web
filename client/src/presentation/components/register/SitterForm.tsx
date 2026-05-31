@@ -10,7 +10,7 @@ interface SitterFormProps {
   errors: Record<string, string>;
   isSubmitting: boolean;
   onDataChange: (data: Partial<SitterRegisterFormData>) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
   onEmailFocus?: () => void;
   onEmailBlur?: () => void;
   onPasswordFocus?: () => void;
@@ -37,7 +37,7 @@ export function SitterForm({
   const toggleService = (service: string) => {
     const hasService = data.services.includes(service);
     const updated = hasService
-      ? data.services.filter((item) => item !== service)
+      ? data.services.filter((item: string) => item !== service)
       : [...data.services, service];
     onDataChange({ services: updated });
   };

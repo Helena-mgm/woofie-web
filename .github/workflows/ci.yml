@@ -56,12 +56,20 @@ jobs:
 
       - name: ⚙️ Configure test environment
         run: |
-          cat > .env.test.local << 'EOF'
-          DATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie_test?serverVersion=15&charset=utf8"
-          JWT_SECRET="ci_test_secret_not_for_production"
+          # Créer le .env de base requis par Symfony (bootEnv cherche ce fichier)
+          cat > .env << 'ENVEOF'
           APP_ENV=test
           APP_SECRET=ci_app_secret_not_for_production
-          EOF
+          DATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie?serverVersion=15&charset=utf8"
+          JWT_SECRET="ci_test_secret_not_for_production"
+          MESSENGER_TRANSPORT_DSN=sync://
+          OLLAMA_API_URL=http://localhost:11434
+          DEFAULT_URI=http://localhost/
+          ENVEOF
+          # Surcharge pour l'environnement test avec la bonne DB
+          cat > .env.test.local << 'ENVEOF'
+          DATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie_test?serverVersion=15&charset=utf8"
+          ENVEOF
 
       - name: 🗄️ Create test database & run migrations
         run: |

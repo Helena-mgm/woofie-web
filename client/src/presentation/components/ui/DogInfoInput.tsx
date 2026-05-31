@@ -409,7 +409,7 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 {/* Affichage des photos */}
                 {formData.photos.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mb-3">
-                    {formData.photos.map((photo, index) => (
+                    {formData.photos.map((photo: File, index: number) => (
                       <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
                         <img
                           src={URL.createObjectURL(photo)}
@@ -419,7 +419,7 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                         <button
                           type="button"
                           onClick={() => {
-                            const newPhotos = formData.photos.filter((_, i) => i !== index);
+                            const newPhotos = formData.photos.filter((_: File, i: number) => i !== index);
                             setFormData({ ...formData, photos: newPhotos });
                           }}
                           className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
