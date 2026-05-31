@@ -7,7 +7,7 @@ interface OwnerFormProps {
   errors: Record<string, string>;
   isSubmitting: boolean;
   onDataChange: (data: Partial<OwnerRegisterFormData>) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
   onEmailFocus?: () => void;
   onEmailBlur?: () => void;
   onPasswordFocus?: () => void;

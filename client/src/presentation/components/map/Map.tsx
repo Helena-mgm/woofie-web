@@ -10,16 +10,16 @@ if (typeof window !== 'undefined') {
   const originalWarn = console.warn;
   const originalError = console.error;
   
-  console.warn = (...args: any[]) => {
-    const message = args[0]?.toString() || '';
+  console.warn = (...args: unknown[]) => {
+    const message = String(args[0] ?? '');
     if (message.includes('WebGL') || message.includes('GroupMarkerNotSet') || message.includes('swiftshader')) {
       return;
     }
     originalWarn.apply(console, args);
   };
   
-  console.error = (...args: any[]) => {
-    const message = args[0]?.toString() || '';
+  console.error = (...args: unknown[]) => {
+    const message = String(args[0] ?? '');
     if (message.includes('WebGL') || message.includes('GroupMarkerNotSet') || message.includes('swiftshader')) {
       return;
     }

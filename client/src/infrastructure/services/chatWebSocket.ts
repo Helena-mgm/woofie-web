@@ -142,12 +142,10 @@ class ChatWebSocketService {
   }
 
   public sendTyping(conversationId: number, userId: number): void {
-    // @ts-expect-error - WebSocket data format
     this.send({ type: 'typing', data: { conversationId, userId } });
   }
 
   public markAsRead(conversationId: number, messageId: number): void {
-    // @ts-expect-error - WebSocket data format
     this.send({ type: 'read', data: { conversationId, messageId } });
   }
 

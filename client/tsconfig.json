@@ -47,6 +47,9 @@
       ],
       "@/shared/*": [
         "./src/shared/*"
+      ],
+      "@/types": [
+        "./src/shared/types/index.ts"
       ]
     }
   },
