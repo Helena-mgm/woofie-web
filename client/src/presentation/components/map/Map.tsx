@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl, { Map as MapLibreMap, Marker, Popup } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapProps } from '@/shared/types/map';
-import Loading from '@/presentation/components/Loading';
 
 // Suppress WebGL warnings globally
 if (typeof window !== 'undefined') {
@@ -194,9 +193,8 @@ export function Map({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
-  const poiMarkersRef = useRef<Marker[]>([]);
+  const poiMarkersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [poiError, setPoiError] = useState<string | null>(null);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -267,11 +265,11 @@ export function Map({
           'carto-light': {
             type: 'raster',
             tiles: [
-              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
             ],
-            tileSize: 256,
+            tileSize: 512,
             attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxzoom: 19,
           },
@@ -285,15 +283,15 @@ export function Map({
             maxzoom: 22,
           },
         ],
-        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
       },
       center: initialCenter,
       zoom: initialZoom,
+      fadeDuration: 100,
+      trackResize: false,
     });
 
-    map.current.on('load', () => {
+    map.current.on('style.load', () => {
       setMapLoaded(true);
-      setLoading(false);
     });
 
     return () => {
@@ -302,7 +300,7 @@ export function Map({
         map.current = null;
       }
     };
-  }, [initialCenter, initialZoom]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter/Zoom are mount-only
 
   // Add event markers
   useEffect(() => {
@@ -312,10 +310,8 @@ export function Map({
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Wait a bit for map to be fully ready
-    const timeout = setTimeout(() => {
-      // Add new markers for each event
-      events.forEach((event) => {
+    // Add new markers for each event
+    events.forEach((event) => {
         if (!event.lat || !event.lng) return; // Skip invalid events
 
         const popup = new Popup({ 
@@ -361,7 +357,6 @@ export function Map({
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: box-shadow 0.2s ease, border-width 0.2s ease;
           pointer-events: auto;
           position: relative;
           z-index: 10;
@@ -373,15 +368,8 @@ export function Map({
           </svg>
         `;
 
-        el.addEventListener('mouseenter', () => {
-          el.style.boxShadow = '0 6px 20px rgba(0,0,0,0.6)';
-          el.style.borderWidth = '5px';
-        });
-
-        el.addEventListener('mouseleave', () => {
-          el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
-          el.style.borderWidth = '3px';
-        });
+        el.addEventListener('mouseenter', () => { el.style.boxShadow = '0 6px 20px rgba(0,0,0,0.5)'; el.style.borderWidth = '4px'; });
+        el.addEventListener('mouseleave', () => { el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)'; el.style.borderWidth = '3px'; });
 
         const marker = new Marker({ 
           element: el,
@@ -410,12 +398,7 @@ export function Map({
         });
 
         markersRef.current.push(marker);
-      });
-    }, 100); // Small delay to ensure map is ready
-
-    return () => {
-      clearTimeout(timeout);
-    };
+    });
   }, [events, mapLoaded]);
 
   const MIN_MOVE_DISTANCE = 0.005; // Minimum movement in degrees (~500m)
@@ -433,8 +416,8 @@ export function Map({
         setIsLegendOpen(false);
       }
       // Remove POI markers if showPOI is false
-      poiMarkersRef.current.forEach(marker => marker.remove());
-      poiMarkersRef.current = [];
+      poiMarkersRef.current.forEach((marker) => marker.remove());
+      poiMarkersRef.current.clear();
       return;
     }
 
@@ -443,7 +426,7 @@ export function Map({
 
     const fetchPOIs = async ({ force = false }: { force?: boolean } = {}) => {
       const now = Date.now();
-      const MIN_INTERVAL = 3000;
+      const MIN_INTERVAL = 500;
 
       // Rate limiting check
       if (!force && now - lastPOIFetchRef.current < MIN_INTERVAL) {
@@ -548,8 +531,8 @@ export function Map({
           } else {
             delete warmupAttemptsRef.current[cacheKey];
             setPoiError("Aucun point d’intérêt enregistré pour cette zone. Lancez ‘php bin/console app:pois:refresh’ avec les coordonnées souhaitées.");
-            poiMarkersRef.current.forEach(marker => marker.remove());
-            poiMarkersRef.current = [];
+            poiMarkersRef.current.forEach((m) => m.remove());
+            poiMarkersRef.current.clear();
           }
           return;
         }
@@ -591,41 +574,39 @@ export function Map({
       const markersData = markerItems.slice(0, 80);
 
       if (markersData.length === 0) {
-        poiMarkersRef.current.forEach(marker => marker.remove());
-        poiMarkersRef.current = [];
+        poiMarkersRef.current.forEach((m) => m.remove());
+        poiMarkersRef.current.clear();
         if (mapDebugEnabled) {
-          console.warn('ℹ️ POI: No points found for current view');
+          console.warn('\u2139\ufe0f POI: No points found for current view');
         }
         return;
       }
 
-      poiMarkersRef.current.forEach(marker => marker.remove());
-      poiMarkersRef.current = [];
+      // Diff-based rendering: only add/remove what changed
+      const incomingKeys = new Set<string>();
 
       markersData.forEach(({ element, coords }) => {
-        const name = element.tags?.name || 'Point d’intérêt';
+        const name = element.tags?.name || 'Point d\u2019int\u00e9r\u00eat';
         const amenity = element.tags?.amenity;
         const leisure = element.tags?.leisure;
         const shop = element.tags?.shop;
-        const address = formatAddress(element.tags);
-        const mapsUrl = buildGoogleMapsUrl(element, coords, address);
 
         let icon = '📍';
         let color = '#6366F1';
-        let typeLabel = 'Point d’intérêt';
+        let typeLabel = 'Point d\u2019int\u00e9r\u00eat';
 
         if (amenity === 'veterinary') {
           icon = '🏥';
           color = '#EF4444';
-          typeLabel = 'Clinique vétérinaire';
+          typeLabel = 'Clinique v\u00e9t\u00e9rinaire';
         } else if (leisure === 'dog_park') {
           icon = '🌳';
           color = '#10B981';
-          typeLabel = 'Parc à chiens';
+          typeLabel = 'Parc \u00e0 chiens';
         } else if (shop === 'pet' || shop === 'pet_food') {
           icon = '🐾';
           color = '#F97316';
-          typeLabel = shop === 'pet_food' ? 'Boutique nourriture animale' : 'Boutique animalière';
+          typeLabel = shop === 'pet_food' ? 'Boutique nourriture animale' : 'Boutique anim\u00e0li\u00e8re';
         } else if (amenity) {
           typeLabel = amenity.replace(/_/g, ' ');
         } else if (leisure) {
@@ -634,63 +615,76 @@ export function Map({
           typeLabel = shop.replace(/_/g, ' ');
         }
 
-        const popup = new Popup({ offset: 25 }).setHTML(`
-          <div class="p-3">
-            <h3 class="font-bold text-sm text-gray-900 mb-1">${icon} ${name}</h3>
-            <p class="text-gray-600 text-xs capitalize">${typeLabel}</p>
-            ${address ? `<p class="text-gray-500 text-xs mt-1">${address}</p>` : ''}
-            <div class="mt-3">
-              <a
-                href="${mapsUrl}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex items-center gap-1 rounded-full bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-indigo-600 transition"
-              >
-                🧭 Y aller
-              </a>
-            </div>
-          </div>
-        `);
+        const key = `${coords.lat.toFixed(5)}|${coords.lon.toFixed(5)}`;
+        incomingKeys.add(key);
 
+        // Skip if this marker already exists
+        if (poiMarkersRef.current.has(key)) return;
+
+        // Wrapper: MapLibre positions this element via transform — never touch it
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'width:28px;height:28px;cursor:pointer;pointer-events:auto;';
+
+        // Inner visual: we scale this on hover, not the wrapper
         const el = document.createElement('div');
         el.className = 'custom-poi-marker';
-        el.style.cssText = `
-          width: 28px;
-          height: 28px;
-          background-color: ${color};
-          border-radius: 50%;
-          border: 2px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          cursor: pointer;
-          transition: box-shadow 0.2s ease, border-width 0.2s ease;
-          pointer-events: auto;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-        `;
-        
+        el.style.cssText = [
+          'width:28px',
+          'height:28px',
+          `background-color:${color}`,
+          'border-radius:50%',
+          'border:2px solid white',
+          'box-shadow:0 2px 6px rgba(0,0,0,0.3)',
+          'display:flex',
+          'align-items:center',
+          'justify-content:center',
+          'font-size:14px',
+          'transition:box-shadow 0.15s ease,transform 0.15s ease',
+          'transform-origin:center center',
+        ].join(';');
         el.textContent = icon;
+        wrapper.appendChild(el);
 
-        el.addEventListener('mouseenter', () => {
-          el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
-          el.style.borderWidth = '3px';
-        });
+        wrapper.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.25)'; el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.45)'; });
+        wrapper.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)'; });
 
-        el.addEventListener('mouseleave', () => {
-          el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-          el.style.borderWidth = '2px';
-        });
+        // Lazily build popup only on first click
+        const address = formatAddress(element.tags);
+        const mapsUrl = buildGoogleMapsUrl(element, coords, address);
+        const popup = new Popup({ offset: 25 });
+        let popupReady = false;
+        el.addEventListener('click', () => {
+          if (!popupReady) {
+            popup.setHTML(`
+              <div class="p-3">
+                <h3 class="font-bold text-sm text-gray-900 mb-1">${icon} ${name}</h3>
+                <p class="text-gray-600 text-xs capitalize">${typeLabel}</p>
+                ${address ? `<p class="text-gray-500 text-xs mt-1">${address}</p>` : ''}
+                <div class="mt-3">
+                  <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1 rounded-full bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-indigo-600 transition">
+                    🧭 Y aller
+                  </a>
+                </div>
+              </div>`);
+            popupReady = true;
+          }
+        }, { once: false });
 
-        const marker = new Marker({ 
-          element: el,
-          anchor: 'center',
-        })
+        const marker = new Marker({ element: wrapper, anchor: 'center' })
           .setLngLat([coords.lon, coords.lat])
           .setPopup(popup)
           .addTo(map.current!);
 
-        poiMarkersRef.current.push(marker);
+        poiMarkersRef.current.set(key, marker);
+      });
+
+      // Remove markers that are no longer in the new set
+      poiMarkersRef.current.forEach((marker, key) => {
+        if (!incomingKeys.has(key)) {
+          marker.remove();
+          poiMarkersRef.current.delete(key);
+        }
       });
     };
 
@@ -699,7 +693,7 @@ export function Map({
       clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         fetchPOIs();
-      }, 800); // 0.8s after stop - Fast but stable
+      }, 200); // UI feels instant but avoids spamming the backend during scroll
     };
 
     // Initial fetch
@@ -725,8 +719,7 @@ export function Map({
 
   return (
     <div className={`relative w-full h-full ${className}`}>
-      {loading && <Loading />}
-      <div ref={mapContainer} className="relative w-full h-full rounded-lg overflow-hidden" />
+      <div ref={mapContainer} className="relative w-full h-full bg-[#f8f4f0]" />
 
       {poiError && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-500/90 text-white text-sm px-4 py-2 rounded-full shadow-lg z-20 flex items-center gap-2">

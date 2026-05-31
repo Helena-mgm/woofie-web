@@ -122,4 +122,29 @@ class ConversationController extends AbstractController
 
         return $this->json(['id' => $conversation->getId()], 201);
     }
+
+    #[Route('/{id}', methods: ['DELETE'])]
+    public function delete(Conversation $conversation, Request $request): JsonResponse
+    {
+        $decoded = $this->getUserFromToken($request);
+
+        if (!$decoded) {
+            return $this->json(['error' => 'Vous devez être connecté.'], 401);
+        }
+
+        $user = $this->userRepo->find($decoded->sub);
+
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non trouvé.'], 404);
+        }
+
+        if (!$conversation->getParticipants()->contains($user)) {
+            return $this->json(['error' => 'Access denied'], 403);
+        }
+
+        $this->em->remove($conversation);
+        $this->em->flush();
+
+        return $this->json(['success' => true]);
+    }
 }
