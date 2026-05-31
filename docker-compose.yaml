@@ -68,11 +68,11 @@ services:
     build:
       context: ./client
       args:
-        NEXT_PUBLIC_API_URL: "http://135.125.107.211:8000"
+        NEXT_PUBLIC_API_URL: "http://localhost:8000"
         NEXT_PUBLIC_WS_ENABLED: "false"
     container_name: woofie-frontend
     environment:
-      NEXT_PUBLIC_API_URL: "http://135.125.107.211:8000"
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
       NEXT_PUBLIC_WS_ENABLED: "false"
     volumes:
       - ./client:/app

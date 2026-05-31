@@ -7,6 +7,7 @@ use App\Entity\Message;
 use App\Entity\User;
 use App\Repository\MessageRepository;
 use App\Repository\UserRepository;
+use App\Service\OllamaService;
 use Doctrine\ORM\EntityManagerInterface;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -23,7 +24,8 @@ class MessageController extends AbstractController
     public function __construct(
         private EntityManagerInterface $em,
         private MessageRepository $messageRepo,
-        private UserRepository $userRepo
+        private UserRepository $userRepo,
+        private OllamaService $ollama
     ) {
         $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
@@ -149,5 +151,122 @@ class MessageController extends AbstractController
 
         $this->messageRepo->markAsRead($conversation, $user->getId());
         return $this->json(['success' => true]);
+    }
+
+    #[Route('/{messageId}', methods: ['PATCH'])]
+    public function update(
+        Conversation $conversation,
+        int $messageId,
+        Request $request
+    ): JsonResponse {
+        $decoded = $this->getUserFromToken($request);
+
+        if (!$decoded) {
+            return $this->json(['error' => 'Vous devez être connecté.'], 401);
+        }
+
+        $user = $this->userRepo->find($decoded->sub);
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non trouvé.'], 404);
+        }
+
+        if (!$conversation->getParticipants()->contains($user)) {
+            return $this->json(['error' => 'Access denied'], 403);
+        }
+
+        $message = $this->messageRepo->findOneBy([
+            'id' => $messageId,
+            'conversation' => $conversation,
+        ]);
+
+        if (!$message) {
+            return $this->json(['error' => 'Message introuvable.'], 404);
+        }
+
+        if ($message->getSender()?->getId() !== $user->getId() || $message->getType() === 'bot') {
+            return $this->json(['error' => 'Modification non autorisée.'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $newContent = trim((string)($data['content'] ?? ''));
+
+        if ($newContent === '') {
+            return $this->json(['error' => 'Le message ne peut pas être vide.'], 400);
+        }
+
+        $message->setContent($newContent);
+        $this->em->persist($message);
+
+        $botPayload = null;
+        $regeneratedBotMessage = null;
+
+        // Si conversation bot, on régénère la prochaine réponse IA
+        if ($conversation->getType() === 'bot') {
+            $history = $this->messageRepo->createQueryBuilder('m')
+                ->where('m.conversation = :conversation')
+                ->andWhere('m.id < :messageId')
+                ->setParameter('conversation', $conversation)
+                ->setParameter('messageId', $message->getId())
+                ->orderBy('m.id', 'DESC')
+                ->setMaxResults(20)
+                ->getQuery()
+                ->getResult();
+
+            $history = array_reverse($history);
+            $historyArray = array_map(
+                fn(Message $msg) => [
+                    'role' => $msg->getType() === 'bot' ? 'assistant' : 'user',
+                    'content' => $msg->getContent(),
+                ],
+                $history
+            );
+
+            // Supprimer tous les messages après celui modifié (rebrancher la conversation)
+            $this->messageRepo->createQueryBuilder('m')
+                ->delete()
+                ->where('m.conversation = :conversation')
+                ->andWhere('m.id > :messageId')
+                ->setParameter('conversation', $conversation)
+                ->setParameter('messageId', $message->getId())
+                ->getQuery()
+                ->execute();
+
+            $newBotResponse = $this->ollama->chat($newContent, $historyArray);
+
+            $newBotMessage = new Message();
+            $newBotMessage->setConversation($conversation);
+            $newBotMessage->setSender($user); // TODO: utiliser un vrai sender bot dédié
+            $newBotMessage->setType('bot');
+            $newBotMessage->setContent($newBotResponse);
+            $this->em->persist($newBotMessage);
+            $regeneratedBotMessage = $newBotMessage;
+        }
+
+        $this->em->flush();
+
+        if ($regeneratedBotMessage) {
+            $botPayload = [
+                'id' => $regeneratedBotMessage->getId(),
+                'conversationId' => $conversation->getId(),
+                'senderId' => $regeneratedBotMessage->getSender()?->getId(),
+                'content' => $regeneratedBotMessage->getContent(),
+                'type' => $regeneratedBotMessage->getType(),
+                'createdAt' => $regeneratedBotMessage->getCreatedAt()->format('c'),
+                'isRead' => $regeneratedBotMessage->isRead(),
+            ];
+        }
+
+        return $this->json([
+            'message' => [
+                'id' => $message->getId(),
+                'conversationId' => $conversation->getId(),
+                'senderId' => $message->getSender()?->getId(),
+                'content' => $message->getContent(),
+                'type' => $message->getType(),
+                'createdAt' => $message->getCreatedAt()->format('c'),
+                'isRead' => $message->isRead(),
+            ],
+            'botMessage' => $botPayload,
+        ]);
     }
 }
