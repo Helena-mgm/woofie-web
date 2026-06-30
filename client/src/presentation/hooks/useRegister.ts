@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiPostMultipart } from '@/shared/lib/api-v2';
+import { apiPostMultipart } from '@/shared/lib/api';
 import { validateOwnerForm, validateSitterForm } from '@/shared/lib/form-validation';
 import type { OwnerRegisterFormData, SitterRegisterFormData, DogInfo } from '@/types';
 

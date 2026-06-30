@@ -7,6 +7,7 @@ use App\Entity\PostLike;
 use App\Entity\PostComment;
 use App\Entity\PostImage;
 use App\Repository\PostRepository;
+use App\Repository\ForbiddenKeywordRepository;
 use App\Repository\DogRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,7 +24,7 @@ class ForumController extends AbstractController
 {
     private string $jwtKey;
 
-    public function __construct()
+    public function __construct(private EntityManagerInterface $em)
     {
         $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
@@ -63,7 +64,7 @@ class ForumController extends AbstractController
     }
 
     #[Route('', name: 'app_forum_create', methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $em, DogRepository $dogRepository, UserRepository $userRepository): JsonResponse
+    public function create(Request $request, EntityManagerInterface $em, DogRepository $dogRepository, UserRepository $userRepository, ForbiddenKeywordRepository $forbiddenRepo): JsonResponse
     {
         $user = $this->getUserFromToken($request, $userRepository);
         if (!$user) {
@@ -73,6 +74,17 @@ class ForumController extends AbstractController
         $content = $request->request->get('content');
         if (empty($content)) {
             return $this->json(['error' => 'Content is required'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Check forbidden keywords
+        $keywords = $forbiddenRepo->getAllKeywords();
+        foreach ($keywords as $kw) {
+            if ($kw === '') {
+                continue;
+            }
+            if (mb_stripos($content, $kw) !== false) {
+                return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
+            }
         }
 
         $post = new Post();
@@ -191,6 +203,18 @@ class ForumController extends AbstractController
             return $this->json(['error' => 'Content is required'], Response::HTTP_BAD_REQUEST);
         }
 
+        // Check forbidden keywords
+        $forbiddenRepo = $this->em->getRepository(\App\Entity\ForbiddenKeyword::class);
+        $keywords = method_exists($forbiddenRepo, 'getAllKeywords') ? $forbiddenRepo->getAllKeywords() : [];
+        foreach ($keywords as $kw) {
+            if ($kw === '') {
+                continue;
+            }
+            if (mb_stripos($content, $kw) !== false) {
+                return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
+            }
+        }
+
         $comment = new PostComment();
         $comment->setPost($post);
         $comment->setUser($user);
@@ -264,6 +288,18 @@ class ForumController extends AbstractController
             return $this->json(['error' => 'Content is required'], Response::HTTP_BAD_REQUEST);
         }
 
+        // Check forbidden keywords
+        $forbiddenRepo = $this->em->getRepository(\App\Entity\ForbiddenKeyword::class);
+        $keywords = method_exists($forbiddenRepo, 'getAllKeywords') ? $forbiddenRepo->getAllKeywords() : [];
+        foreach ($keywords as $kw) {
+            if ($kw === '') {
+                continue;
+            }
+            if (mb_stripos($content, $kw) !== false) {
+                return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
+            }
+        }
+
         $reply = new PostComment();
         $reply->setPost($post);
         $reply->setUser($user);
@@ -330,6 +366,7 @@ class ForumController extends AbstractController
             'user' => [
                 'id' => $post->getUser()->getId(),
                 'email' => $post->getUser()->getEmail(),
+                'isAdmin' => in_array('ROLE_ADMIN', $post->getUser()->getRoles(), true),
                 'owner' => $post->getUser()->getOwner() ? [
                     'nom' => $post->getUser()->getOwner()->getNom(),
                     'prenom' => $post->getUser()->getOwner()->getPrenom(),
@@ -387,6 +424,7 @@ class ForumController extends AbstractController
             'user' => [
                 'id' => $comment->getUser()->getId(),
                 'email' => $comment->getUser()->getEmail(),
+                'isAdmin' => in_array('ROLE_ADMIN', $comment->getUser()->getRoles(), true),
                 'owner' => $comment->getUser()->getOwner() ? [
                     'nom' => $comment->getUser()->getOwner()->getNom(),
                     'prenom' => $comment->getUser()->getOwner()->getPrenom(),

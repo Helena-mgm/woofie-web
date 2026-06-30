@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { getImageUrl } from '@/infrastructure/config/constants';
 
@@ -11,6 +12,7 @@ interface ProfileHeaderProps {
     ville: string;
     photoPath: string | null;
     isVerified?: boolean;
+    isAdmin?: boolean;
     bio?: string | null;
     services?: string[];
     price_per_hour?: number | null;
@@ -40,11 +42,12 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
       {/* Avatar - Instagram style */}
       <div className="relative w-36 h-36 rounded-full overflow-hidden border-4 border-gray-200 flex-shrink-0">
         {profile.photoPath ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img 
-            src={getImageUrl(profile.photoPath)} 
-            alt={fullName} 
-            className="w-full h-full object-cover" 
+          <Image
+            src={getImageUrl(profile.photoPath)}
+            alt={fullName}
+            fill
+            className="object-cover"
+            sizes="144px"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-6xl bg-gradient-to-br from-gray-100 to-gray-200">
@@ -55,15 +58,27 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
 
       {/* Info Section */}
       <div className="flex-1 pt-4">
-        {/* Username + Badge */}
-        <div className="flex items-center gap-4 mb-6">
+        {/* Username + Badges */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           <h1 className="text-3xl font-light text-gray-900">{fullName}</h1>
-          {profile.isVerified && (
+          {profile.isAdmin && (
+            <span className="px-2.5 py-1 bg-red-100 text-red-600 border border-red-300 text-xs font-bold rounded uppercase tracking-wide">
+              🔴 Admin
+            </span>
+          )}
+          {profile.isVerified ? (
             <div className="px-3 py-1 bg-blue-500 text-white text-sm font-semibold rounded flex items-center gap-1">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               Vérifié
+            </div>
+          ) : (
+            <div className="px-3 py-1 bg-gray-100 text-gray-500 text-sm font-semibold rounded flex items-center gap-1 border border-gray-200">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+              </svg>
+              Non vérifié
             </div>
           )}
         </div>

@@ -9,7 +9,7 @@ import { SitterForm } from '@/presentation/components/register/SitterForm';
 import { AnimatedDog } from '@/presentation/components/AnimatedDog';
 import { AnimatedPawPrints } from '@/presentation/components/home/AnimatedPawPrints';
 import { useRegister } from '@/presentation/hooks/useRegister';
-import { tokenManager } from '@/shared/lib/api-v2';
+import { tokenManager } from '@/shared/lib/api';
 
 /**
  * Register Page - Ultra simplified

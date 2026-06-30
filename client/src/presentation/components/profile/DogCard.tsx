@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { getImageUrl } from '@/infrastructure/config/constants';
 
@@ -25,11 +26,12 @@ export function DogCard({ dog }: DogCardProps) {
       className="relative aspect-square bg-gray-100 rounded overflow-hidden cursor-pointer group"
     >
       {dog.photoPath ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img 
-          src={getImageUrl(dog.photoPath)} 
-          alt={dog.nom} 
-          className="w-full h-full object-cover" 
+        <Image
+          src={getImageUrl(dog.photoPath)}
+          alt={dog.nom}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 33vw, 200px"
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-6xl bg-gradient-to-br from-gray-100 to-gray-200">

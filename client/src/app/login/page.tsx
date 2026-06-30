@@ -7,7 +7,7 @@ import { AuthLayout } from '@/presentation/components/auth/AuthLayout';
 import { PasswordInput } from '@/presentation/components/auth/PasswordInput';
 import { AnimatedDog } from '@/presentation/components/AnimatedDog';
 import { useLogin } from '@/presentation/hooks/useLogin';
-import { tokenManager } from '@/shared/lib/api-v2';
+import { tokenManager } from '@/shared/lib/api';
 
 /**
  * Login Page - Ultra simplified

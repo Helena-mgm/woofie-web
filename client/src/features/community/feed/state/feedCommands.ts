@@ -22,7 +22,7 @@ export const loadFeed = async (dispatch: (action: FeedAction) => void) => {
 
 export const publishPost = async (
   dispatch: (action: FeedAction) => void,
-  payload: { content: string; images?: File[] }
+  payload: { content: string; dogIds?: number[]; images?: File[] }
 ) => {
   dispatch({ type: "setLoading", payload: true });
   try {

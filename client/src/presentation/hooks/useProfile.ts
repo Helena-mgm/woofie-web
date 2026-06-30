@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiGet } from '@/shared/lib/api-v2';
+import { apiGet } from '@/shared/lib/api';
 import type { Dog } from '@/types';
 
 interface ProfileData {

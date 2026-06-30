@@ -45,96 +45,105 @@ class AuthController extends AbstractController
         ValidatorInterface $validator
     ): JsonResponse
     {
-        // Parse FormData (multipart/form-data)
-        $email = $request->request->get('email');
+        // ── 1. Lecture des champs de base ──────────────────────────────────
+        $email    = $request->request->get('email');
         $password = $request->request->get('password');
-        $type = $request->request->get('type');
-        
-        // Basic validation
+        $type     = $request->request->get('type');
+
         if (!$email || !$password || !$type) {
             return new JsonResponse(['error' => 'email, password and type are required'], 400);
         }
-
         if (strlen($password) < 6) {
             return new JsonResponse(['error' => 'Password must be at least 6 characters'], 400);
         }
-
         if (!in_array($type, ['owner', 'sitter'])) {
             return new JsonResponse(['error' => 'type must be owner or sitter'], 400);
         }
-
         if ($repo->findOneByEmail($email)) {
             return new JsonResponse(['error' => 'Cet email est déjà utilisé'], 400);
         }
 
+        // ── 2. Validation spécifique au type (AVANT tout flush) ───────────
+        if ($type === 'owner') {
+            $nom          = $request->request->get('nom');
+            $prenom       = $request->request->get('prenom');
+            $telephoneRaw = $request->request->get('telephone');
+            $telephone    = $telephoneRaw ? preg_replace('/\s+/', '', $telephoneRaw) : null;
+            $ville        = $request->request->get('ville');
+            $dogsJson     = $request->request->get('dogs');
+
+            if (!$nom || !$prenom || !$telephone || !$ville) {
+                return new JsonResponse(['error' => 'nom, prenom, telephone and ville sont requis'], 400);
+            }
+            if ($ownerRepository->findOneBy(['telephone' => $telephone])) {
+                return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
+            }
+            if (!$dogsJson) {
+                return new JsonResponse(['error' => 'Au moins un chien est requis'], 400);
+            }
+            $dogs = json_decode($dogsJson, true);
+            if (!is_array($dogs) || empty($dogs)) {
+                return new JsonResponse(['error' => 'Données chiens invalides'], 400);
+            }
+
+            // Validation ICAD avant tout persist
+            $seenIcad = [];
+            foreach ($dogs as $dogData) {
+                $icad = $dogData['icadNumber'] ?? null;
+                if (!$icad) continue;
+                if (in_array($icad, $seenIcad, true)) {
+                    return new JsonResponse(['error' => 'Numéro ICAD en double : ' . $icad], 400);
+                }
+                $seenIcad[] = $icad;
+                if ($dogRepository->findOneBy(['icadNumber' => $icad])) {
+                    return new JsonResponse(['error' => 'Numéro ICAD déjà utilisé : ' . $icad], 400);
+                }
+                foreach (['icadNumber', 'nom', 'sexe', 'race', 'dateNaissance'] as $f) {
+                    if (empty($dogData[$f])) {
+                        return new JsonResponse(['error' => "Champ '$f' manquant pour le chien " . ($dogData['nom'] ?? '?')], 400);
+                    }
+                }
+            }
+        } elseif ($type === 'sitter') {
+            $nom          = $request->request->get('nom');
+            $prenom       = $request->request->get('prenom');
+            $telephoneRaw = $request->request->get('telephone');
+            $telephone    = $telephoneRaw ? preg_replace('/\s+/', '', $telephoneRaw) : null;
+            $ville        = $request->request->get('ville');
+            $siretRaw     = $request->request->get('siret');
+            $siret        = $siretRaw ? preg_replace('/\s+/', '', $siretRaw) : null;
+
+            if (!$nom || !$prenom || !$telephone || !$ville || !$siret) {
+                return new JsonResponse(['error' => 'nom, prenom, telephone, ville et siret sont requis'], 400);
+            }
+            if ($sitterRepository->findOneBy(['telephone' => $telephone])) {
+                return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
+            }
+            if ($sitterRepository->findOneBy(['siret' => $siret])) {
+                return new JsonResponse(['error' => 'Ce numéro SIRET est déjà utilisé'], 400);
+            }
+        }
+
+        // ── 3. Construction des entités + flush dans une transaction ──────
         try {
-            // Create User entity
+            $em->getConnection()->beginTransaction();
+
+            // User
             $user = new User();
             $user->setEmail($email);
             $user->setType($type);
-            $hashed = $hasher->hashPassword($user, $password);
-            $user->setPassword($hashed);
+            $user->setPassword($hasher->hashPassword($user, $password));
 
-            // Validate user entity
-            $errors = $validator->validate($user);
-            if (count($errors) > 0) {
-                $errorMessages = [];
-                foreach ($errors as $error) {
-                    $errorMessages[] = $error->getMessage();
-                }
-                return new JsonResponse(['error' => implode(', ', $errorMessages)], 400);
+            $userErrors = $validator->validate($user);
+            if (count($userErrors) > 0) {
+                $em->getConnection()->rollBack();
+                return new JsonResponse(['error' => (string) $userErrors], 400);
             }
 
             $em->persist($user);
-            $em->flush(); // Flush to get user ID
 
-            // Create Owner or Sitter based on type
             if ($type === 'owner') {
-                $nom = $request->request->get('nom');
-                $prenom = $request->request->get('prenom');
-                $telephoneRaw = $request->request->get('telephone');
-                $telephone = $telephoneRaw ? preg_replace('/\s+/', '', $telephoneRaw) : null;
-                $ville = $request->request->get('ville');
-                $dogsJson = $request->request->get('dogs');
-
-                if (!$nom || !$prenom || !$telephone || !$ville) {
-                    return new JsonResponse(['error' => 'nom, prenom, telephone and ville are required for owners'], 400);
-                }
-
-                if ($ownerRepository->findOneBy(['telephone' => $telephone])) {
-                    return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
-                }
-
-                // Validate dogs data
-                if (!$dogsJson) {
-                    error_log('DEBUG: dogsJson is null or empty');
-                    return new JsonResponse(['error' => 'At least one dog is required'], 400);
-                }
-
-                error_log('DEBUG: dogsJson = ' . $dogsJson);
-                $dogs = json_decode($dogsJson, true);
-                error_log('DEBUG: dogs after decode = ' . json_encode($dogs));
-                if (!is_array($dogs) || empty($dogs)) {
-                    return new JsonResponse(['error' => 'Invalid dogs data or empty. Received: ' . $dogsJson], 400);
-                }
-
-                $seenIcadNumbers = [];
-                foreach ($dogs as $dogData) {
-                    $icadNumber = $dogData['icadNumber'] ?? null;
-                    if (!$icadNumber) {
-                        continue;
-                    }
-
-                    if (in_array($icadNumber, $seenIcadNumbers, true)) {
-                        return new JsonResponse(['error' => 'Numéro ICAD en double dans le formulaire: ' . $icadNumber], 400);
-                    }
-                    $seenIcadNumbers[] = $icadNumber;
-
-                    if ($dogRepository->findOneBy(['icadNumber' => $icadNumber])) {
-                        return new JsonResponse(['error' => 'Numéro ICAD déjà utilisé: ' . $icadNumber], 400);
-                    }
-                }
-
+                /** @var string $nom @var string $prenom @var string $telephone @var string $ville @var array $dogs */
                 $owner = new Owner();
                 $owner->setUser($user);
                 $owner->setNom($nom);
@@ -142,118 +151,53 @@ class AuthController extends AbstractController
                 $owner->setTelephone($telephone);
                 $owner->setVille($ville);
 
-                // Handle owner photo upload
                 $photoFile = $request->files->get('photo');
                 if ($photoFile) {
-                    $uploadsDir = $this->getParameter('kernel.project_dir') . '/public/uploads/owners';
-                    if (!is_dir($uploadsDir)) {
-                        mkdir($uploadsDir, 0777, true);
-                    }
-                    $filename = uniqid() . '.' . $photoFile->guessExtension();
-                    $photoFile->move($uploadsDir, $filename);
-                    $owner->setPhotoPath('/uploads/owners/' . $filename);
+                    $dir = $this->getParameter('kernel.project_dir') . '/public/uploads/owners';
+                    if (!is_dir($dir)) mkdir($dir, 0777, true);
+                    $fname = uniqid() . '.' . $photoFile->guessExtension();
+                    $photoFile->move($dir, $fname);
+                    $owner->setPhotoPath('/uploads/owners/' . $fname);
                 }
 
                 $em->persist($owner);
-                $em->flush();
 
-                // Create dogs with complete information and photos
                 foreach ($dogs as $dogIndex => $dogData) {
-                    // Validate required fields
-                    if (empty($dogData['icadNumber']) || empty($dogData['nom']) || 
-                        empty($dogData['sexe']) || empty($dogData['race']) || 
-                        empty($dogData['dateNaissance'])) {
-                        return new JsonResponse([
-                            'error' => 'Missing required fields for dog: ' . ($dogData['nom'] ?? "dog $dogIndex")
-                        ], 400);
-                    }
-
                     $dog = new Dog();
                     $dog->setOwner($owner);
                     $dog->setIcadNumber($dogData['icadNumber']);
                     $dog->setNom($dogData['nom']);
                     $dog->setSexe($dogData['sexe']);
                     $dog->setRace($dogData['race']);
-                    
-                    // Parse and set birth date
                     try {
-                        $birthDate = new \DateTime($dogData['dateNaissance']);
-                        $dog->setDateNaissance($birthDate);
-                    } catch (\Exception $e) {
-                        return new JsonResponse([
-                            'error' => 'Invalid birth date for ' . $dogData['nom']
-                        ], 400);
+                        $dog->setDateNaissance(new \DateTime($dogData['dateNaissance']));
+                    } catch (\Exception) {
+                        $em->getConnection()->rollBack();
+                        return new JsonResponse(['error' => 'Date de naissance invalide pour ' . $dogData['nom']], 400);
                     }
+                    $icad = $dogData['icadNumber'];
+                    $dog->setIcadType(strlen($icad) === 15 && ctype_digit($icad) ? 'microchip' : 'tattoo');
 
-                    // Detect ICAD type (microchip or tattoo)
-                    $icadType = 'microchip';
-                    if (strlen($dogData['icadNumber']) !== 15 || !ctype_digit($dogData['icadNumber'])) {
-                        $icadType = 'tattoo';
-                    }
-                    $dog->setIcadType($icadType);
-
-                    // Handle dog photos (up to 5 photos)
-                    $dogPhotosDir = $this->getParameter('kernel.project_dir') . '/public/uploads/dogs';
-                    if (!is_dir($dogPhotosDir)) {
-                        mkdir($dogPhotosDir, 0777, true);
-                    }
-
+                    $dogDir = $this->getParameter('kernel.project_dir') . '/public/uploads/dogs';
+                    if (!is_dir($dogDir)) mkdir($dogDir, 0777, true);
                     $photoOrder = 0;
-                    for ($photoIndex = 0; $photoIndex < 5; $photoIndex++) {
-                        $photoKey = "dogPhoto_{$dogIndex}_{$photoIndex}";
-                        $dogPhotoFile = $request->files->get($photoKey);
-                        
-                        if ($dogPhotoFile) {
-                            $dogFilename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $dogData['nom']) . '.' . $dogPhotoFile->guessExtension();
-                            $dogPhotoFile->move($dogPhotosDir, $dogFilename);
-                            
-                            // Create DogPhoto entity
-                            $dogPhoto = new DogPhoto();
-                            $dogPhoto->setDog($dog);
-                            $dogPhoto->setPhotoPath('/uploads/dogs/' . $dogFilename);
-                            $dogPhoto->setDisplayOrder($photoOrder);
-                            $em->persist($dogPhoto);
-                            
-                            // Set first photo as main photo path
-                            if ($photoOrder === 0) {
-                                $dog->setPhotoPath('/uploads/dogs/' . $dogFilename);
-                            }
-                            
-                            $photoOrder++;
-                        }
+                    for ($pi = 0; $pi < 5; $pi++) {
+                        $dogPhoto = $request->files->get("dogPhoto_{$dogIndex}_{$pi}");
+                        if (!$dogPhoto) continue;
+                        $dfname = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $dogData['nom']) . '.' . $dogPhoto->guessExtension();
+                        $dogPhoto->move($dogDir, $dfname);
+                        $dp = new DogPhoto();
+                        $dp->setDog($dog);
+                        $dp->setPhotoPath('/uploads/dogs/' . $dfname);
+                        $dp->setDisplayOrder($photoOrder);
+                        $em->persist($dp);
+                        if ($photoOrder === 0) $dog->setPhotoPath('/uploads/dogs/' . $dfname);
+                        $photoOrder++;
                     }
-
                     $em->persist($dog);
                 }
-                
-                $em->flush();
-
             } elseif ($type === 'sitter') {
-                $nom = $request->request->get('nom');
-                $prenom = $request->request->get('prenom');
-                $telephoneRaw = $request->request->get('telephone');
-                $telephone = $telephoneRaw ? preg_replace('/\s+/', '', $telephoneRaw) : null;
-                $ville = $request->request->get('ville');
-                $siretRaw = $request->request->get('siret');
-                $siret = $siretRaw ? preg_replace('/\s+/', '', $siretRaw) : null;
-                $bio = $request->request->get('bio');
-                $servicesRaw = $request->request->get('services');
-                $pricePerHour = $request->request->get('price_per_hour');
-                $isAvailable = $request->request->get('is_available');
-                $experienceYears = $request->request->get('experience_years');
-
-                if (!$nom || !$prenom || !$telephone || !$ville || !$siret) {
-                    return new JsonResponse(['error' => 'nom, prenom, telephone, ville and siret are required for sitters'], 400);
-                }
-
-                if ($sitterRepository->findOneBy(['telephone' => $telephone])) {
-                    return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
-                }
-
-                if ($sitterRepository->findOneBy(['siret' => $siret])) {
-                    return new JsonResponse(['error' => 'Ce numéro SIRET est déjà utilisé'], 400);
-                }
-
+                /** @var string $nom @var string $prenom @var string $telephone @var string $ville @var string $siret */
                 $sitter = new Sitter();
                 $sitter->setUser($user);
                 $sitter->setNom($nom);
@@ -261,77 +205,67 @@ class AuthController extends AbstractController
                 $sitter->setTelephone($telephone);
                 $sitter->setVille($ville);
                 $sitter->setSiret($siret);
-                $sitter->setIsVerified(false); // By default, not verified
+                $sitter->setIsVerified(false);
 
-                if ($bio) {
-                    $sitter->setBio($bio);
-                }
+                $bio         = $request->request->get('bio');
+                $servicesRaw = $request->request->get('services');
+                $price       = $request->request->get('price_per_hour');
+                $available   = $request->request->get('is_available');
+                $expYears    = $request->request->get('experience_years');
 
+                if ($bio)          $sitter->setBio($bio);
                 if ($servicesRaw) {
-                    $decodedServices = json_decode($servicesRaw, true);
-                    if (is_array($decodedServices)) {
-                        $cleaned = array_values(array_filter(array_map(static function ($service) {
-                            return is_string($service) ? trim($service) : null;
-                        }, $decodedServices)));
-                        $sitter->setServices($cleaned);
+                    $decoded = json_decode($servicesRaw, true);
+                    if (is_array($decoded)) {
+                        $sitter->setServices(array_values(array_filter(array_map(
+                            fn($s) => is_string($s) ? trim($s) : null, $decoded
+                        ))));
                     }
                 }
-
-                if ($pricePerHour !== null && $pricePerHour !== '') {
-                    $normalizedPrice = number_format((float) $pricePerHour, 2, '.', '');
-                    $sitter->setPricePerHour($normalizedPrice);
+                if ($price !== null && $price !== '')
+                    $sitter->setPricePerHour(number_format((float) $price, 2, '.', ''));
+                if ($available !== null) {
+                    $av = filter_var($available, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                    if ($av !== null) $sitter->setIsAvailable($av);
                 }
-
-                if ($isAvailable !== null) {
-                    $availability = filter_var($isAvailable, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                    if ($availability !== null) {
-                        $sitter->setIsAvailable($availability);
+                if ($expYears !== null && $expYears !== '') {
+                    $y = (int) $expYears;
+                    if ($y < 0) {
+                        $em->getConnection()->rollBack();
+                        return new JsonResponse(['error' => 'experience_years doit être positif'], 400);
                     }
+                    $sitter->setExperienceYears($y);
                 }
 
-                if ($experienceYears !== null && $experienceYears !== '') {
-                    $years = (int) $experienceYears;
-                    if ($years < 0) {
-                        return new JsonResponse(['error' => 'experience_years must be a positive number'], 400);
-                    }
-                    $sitter->setExperienceYears($years);
-                }
-
-                // Handle photo upload
                 $photoFile = $request->files->get('photo');
                 if ($photoFile) {
-                    $uploadsDir = $this->getParameter('kernel.project_dir') . '/public/uploads';
-                    if (!is_dir($uploadsDir)) {
-                        mkdir($uploadsDir, 0777, true);
-                    }
-                    $filename = uniqid() . '.' . $photoFile->guessExtension();
-                    $photoFile->move($uploadsDir, $filename);
-                    $sitter->setPhotoPath('/uploads/' . $filename);
+                    $dir = $this->getParameter('kernel.project_dir') . '/public/uploads';
+                    if (!is_dir($dir)) mkdir($dir, 0777, true);
+                    $fname = uniqid() . '.' . $photoFile->guessExtension();
+                    $photoFile->move($dir, $fname);
+                    $sitter->setPhotoPath('/uploads/' . $fname);
                 }
 
                 $em->persist($sitter);
-                $em->flush();
             }
 
-            return new JsonResponse(['success' => true, 'message' => 'User registered successfully'], 201);
+            // Un seul flush à la toute fin — atomique
+            $em->flush();
+            $em->getConnection()->commit();
+
+            return new JsonResponse(['success' => true, 'message' => 'Compte créé avec succès'], 201);
 
         } catch (UniqueConstraintViolationException $e) {
-            $message = 'Une donnée unique est déjà utilisée';
-            $details = $e->getMessage();
-
-            if (str_contains($details, 'telephone')) {
-                $message = 'Ce numéro de téléphone est déjà utilisé';
-            } elseif (str_contains($details, 'email')) {
-                $message = 'Cet email est déjà utilisé';
-            } elseif (str_contains($details, 'siret')) {
-                $message = 'Ce numéro SIRET est déjà utilisé';
-            } elseif (str_contains($details, 'icad')) {
-                $message = 'Ce numéro ICAD est déjà utilisé';
-            }
-
-            return new JsonResponse(['error' => $message], 400);
+            if ($em->getConnection()->isTransactionActive()) $em->getConnection()->rollBack();
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'telephone'))  return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
+            if (str_contains($msg, 'email'))       return new JsonResponse(['error' => 'Cet email est déjà utilisé'], 400);
+            if (str_contains($msg, 'siret'))       return new JsonResponse(['error' => 'Ce numéro SIRET est déjà utilisé'], 400);
+            if (str_contains($msg, 'icad'))        return new JsonResponse(['error' => 'Ce numéro ICAD est déjà utilisé'], 400);
+            return new JsonResponse(['error' => 'Une donnée unique est déjà utilisée'], 400);
         } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'Registration failed: ' . $e->getMessage()], 500);
+            if ($em->getConnection()->isTransactionActive()) $em->getConnection()->rollBack();
+            return new JsonResponse(['error' => 'Inscription échouée : ' . $e->getMessage()], 500);
         }
     }
 
@@ -413,6 +347,9 @@ class AuthController extends AbstractController
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'type' => $user->getType(),
+            'is_verified' => $user->isVerified(),
+            'is_admin' => $user->isAdmin(),
+            'roles' => $user->getRoles(),
         ];
 
         // Fetch Owner or Sitter profile based on type
@@ -444,5 +381,120 @@ class AuthController extends AbstractController
         }
 
         return new JsonResponse($data);
+    }
+
+    /** GET /api/me/export — RGPD: export de toutes les données personnelles */
+    #[Route('/api/me/export', methods: ['GET'])]
+    public function exportAccount(Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    {
+        $header = $request->headers->get('Authorization');
+        if (!$header || !str_starts_with($header, 'Bearer ')) {
+            return new JsonResponse(['error' => 'Authentification requise'], 401);
+        }
+        try {
+            $decoded = \Firebase\JWT\JWT::decode(substr($header, 7), new \Firebase\JWT\Key($this->jwtKey, 'HS256'));
+            $user = $userRepository->find((int) $decoded->sub);
+        } catch (\Exception) {
+            return new JsonResponse(['error' => 'Token invalide'], 401);
+        }
+        if (!$user) {
+            return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
+        }
+
+        $export = [
+            'exported_at' => (new \DateTime())->format('c'),
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'type' => $user->getType(),
+                'is_verified' => $user->isVerified(),
+                'roles' => $user->getRoles(),
+            ],
+        ];
+
+        if ($user->getType() === 'owner') {
+            $owner = $em->getRepository(\App\Entity\Owner::class)->findOneBy(['user' => $user]);
+            if ($owner) {
+                $export['profile'] = [
+                    'nom' => $owner->getNom(),
+                    'prenom' => $owner->getPrenom(),
+                    'telephone' => $owner->getTelephone(),
+                    'ville' => $owner->getVille(),
+                    'photo_path' => $owner->getPhotoPath(),
+                    'member_since' => $owner->getCreatedAt()->format('c'),
+                    'dogs' => array_map(fn($dog) => [
+                        'id' => $dog->getId(),
+                        'nom' => $dog->getNom(),
+                        'race' => $dog->getRace(),
+                        'sexe' => $dog->getSexe(),
+                        'icad' => $dog->getIcadNumber(),
+                        'date_naissance' => $dog->getDateNaissance()?->format('Y-m-d'),
+                    ], $owner->getDogs()->toArray()),
+                ];
+            }
+        } elseif ($user->getType() === 'sitter') {
+            $sitter = $em->getRepository(\App\Entity\Sitter::class)->findOneBy(['user' => $user]);
+            if ($sitter) {
+                $export['profile'] = [
+                    'nom' => $sitter->getNom(),
+                    'prenom' => $sitter->getPrenom(),
+                    'telephone' => $sitter->getTelephone(),
+                    'ville' => $sitter->getVille(),
+                    'photo_path' => $sitter->getPhotoPath(),
+                    'siret' => $sitter->getSiret(),
+                    'bio' => $sitter->getBio(),
+                    'services' => $sitter->getServices(),
+                    'price_per_hour' => $sitter->getPricePerHour(),
+                    'is_available' => $sitter->isAvailable(),
+                    'experience_years' => $sitter->getExperienceYears(),
+                    'is_verified' => $sitter->getIsVerified(),
+                    'member_since' => $sitter->getCreatedAt()->format('c'),
+                ];
+            }
+        }
+
+        return new JsonResponse($export);
+    }
+
+    /** DELETE /api/account — suppression RGPD du compte et de toutes les données */
+    #[Route('/api/account', methods: ['DELETE'])]
+    public function deleteAccount(Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    {
+        $header = $request->headers->get('Authorization');
+        if (!$header || !str_starts_with($header, 'Bearer ')) {
+            return new JsonResponse(['error' => 'Authentification requise'], 401);
+        }
+        try {
+            $decoded = \Firebase\JWT\JWT::decode(substr($header, 7), new \Firebase\JWT\Key($this->jwtKey, 'HS256'));
+            $user = $userRepository->find((int) $decoded->sub);
+        } catch (\Exception) {
+            return new JsonResponse(['error' => 'Token invalide'], 401);
+        }
+
+        if (!$user) return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
+
+        // Confirmation optionnelle par mot de passe
+        $data = json_decode($request->getContent(), true) ?? [];
+        if (!empty($data['password'])) {
+            $hasher = $this->container->get('security.user_password_hasher');
+            if (!$hasher->isPasswordValid($user, $data['password'])) {
+                return new JsonResponse(['error' => 'Mot de passe incorrect'], 403);
+            }
+        }
+
+        // Cascade : User → Owner/Sitter/Dogs/Posts/Events/Notifications tous supprimés via ON DELETE CASCADE
+        $em->remove($user);
+        $em->flush();
+
+        return new JsonResponse(['success' => true, 'message' => 'Compte supprimé conformément au RGPD']);
+    }
+
+    /** GET /api/siret/{siret} — validation publique d'un numéro SIRET (format + Luhn + API Sirene si clé configurée) */
+    #[Route('/api/siret/{siret}', name: 'api_validate_siret', methods: ['GET'])]
+    public function validateSiret(string $siret, \App\Service\SiretValidator $siretValidator): JsonResponse
+    {
+        $normalized = preg_replace('/\s+/', '', $siret);
+        $result = $siretValidator->validate((string) $normalized);
+        return new JsonResponse($result);
     }
 }

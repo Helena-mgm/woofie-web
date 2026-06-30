@@ -198,6 +198,16 @@ class SitterController extends AbstractController
             $sitter->setTelephone($phone);
         }
 
+        // Auto-vérification : rendre le sitter visible dès que son profil est complet
+        $hasCompletedProfile = $sitter->getBio() !== null
+            && trim($sitter->getBio()) !== ''
+            && !empty($sitter->getServices())
+            && $sitter->getPricePerHour() !== null;
+
+        if ($hasCompletedProfile && !$sitter->getIsVerified()) {
+            $sitter->setIsVerified(true);
+        }
+
         $em->flush();
 
         return new JsonResponse($this->mapSitter($sitter));

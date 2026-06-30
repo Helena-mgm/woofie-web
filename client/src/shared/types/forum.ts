@@ -27,6 +27,7 @@ export interface User {
 
 export interface DogSitter extends User {
   type: 'dogsitter';
+  user_id?: number; // ID de l'entité User (utilisé pour les conversations)
   rating?: number;
   reviews_count?: number;
   price_per_hour?: number;

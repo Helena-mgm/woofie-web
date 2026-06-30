@@ -4,7 +4,21 @@ import { use, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ProtectRoute } from '@/features/security/ProtectRoute';
 import { DogProfileHeader } from '@/presentation/components/profile/DogProfileHeader';
-import { apiGet } from '@/shared/lib/api-v2';
+import { apiGet } from '@/shared/lib/api';
+
+interface DogApiResponse {
+  nom: string;
+  race: string | null;
+  sexe: string | null;
+  dateNaissance: string | null;
+  photoPath: string | null;
+  description?: string | null;
+  owner: {
+    id: number;
+    nom: string;
+    photoPath?: string | null;
+  };
+}
 
 /**
  * Dog Profile Page - Same design as Owner Profile
@@ -13,8 +27,7 @@ import { apiGet } from '@/shared/lib/api-v2';
 export default function DogProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const dogId = parseInt(resolvedParams.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [dog, setDog] = useState<any>(null);
+  const [dog, setDog] = useState<DogApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +36,7 @@ export default function DogProfilePage({ params }: { params: Promise<{ id: strin
       try {
         const response = await apiGet(`/api/dog/${dogId}`);
         if (response.ok && response.data) {
-          setDog(response.data);
+          setDog(response.data as DogApiResponse);
         } else {
           setError('Chien introuvable');
         }

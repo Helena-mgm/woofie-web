@@ -1,6 +1,8 @@
-import { apiRequest } from "@/shared/lib/api-v2";
+import { apiRequest } from "@/shared/lib/api";
 import type { Post } from "@/shared/types/forum";
 import { mapPostCollection, mapComment } from "../mappers/feedMappers";
+
+export type MyDog = { id: number; name: string; breed: string; photo_path?: string };
 
 export async function fetchFeed(): Promise<Post[]> {
   const response = await apiRequest("/api/posts");
@@ -76,4 +78,37 @@ export async function toggleCommentLike(postId: number, commentId: number) {
   });
   if (!response.ok) throw new Error("Unable to update comment like");
   return response.json() as Promise<{ isLiked: boolean; likesCount: number }>;
+}
+
+/** Chiens de l'utilisateur connecté — pour le tagger dans un post */
+export async function fetchMyDogs(): Promise<MyDog[]> {
+  try {
+    const response = await apiRequest("/api/profile/dogs");
+    if (!response.ok) return [];
+    const data = await response.json() as Array<{ id: number; name?: string; nom?: string; breed?: string; race?: string; photo?: string; photo_path?: string }>;
+    return Array.isArray(data)
+      ? data.map((d) => ({
+          id: d.id,
+          name: d.name ?? d.nom ?? "?",
+          breed: d.breed ?? d.race ?? "",
+          photo_path: d.photo ?? d.photo_path,
+        }))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Recherche d'utilisateurs pour les @mentions */
+export async function searchUsers(
+  query: string
+): Promise<Array<{ id: number; nom: string; prenom?: string; photo_path?: string }>> {
+  try {
+    const response = await apiRequest(`/api/users/search?q=${encodeURIComponent(query)}`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
 }

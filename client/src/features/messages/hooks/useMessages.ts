@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Conversation, Message, WSMessage } from "@/shared/types/chat";
-import { apiDelete, apiGet, apiPatch, apiPost, tokenManager } from "@/shared/lib/api-v2";
+import { apiDelete, apiGet, apiPatch, apiPost, tokenManager } from "@/shared/lib/api";
 import { chatWS } from "@/infrastructure/services/chatWebSocket";
 import { sendBotMessage } from "@/infrastructure/services/botService";
 
@@ -76,16 +76,18 @@ export function useMessages(userId?: number) {
 
     const unsubscribe = chatWS.subscribe((payload: WSMessage) => {
       if (payload.type === "message") {
-        setState((prev) => ({
-          ...prev,
-          messages: {
-            ...prev.messages,
-            [payload.data.conversationId]: [
-              ...(prev.messages[payload.data.conversationId] ?? []),
-              payload.data,
-            ],
-          },
-        }));
+        setState((prev) => {
+          const existing = prev.messages[payload.data.conversationId] ?? [];
+          // Dédoublonnage : évite les doublons entre WS et polling
+          if (existing.some((m) => m.id === payload.data.id)) return prev;
+          return {
+            ...prev,
+            messages: {
+              ...prev.messages,
+              [payload.data.conversationId]: [...existing, payload.data],
+            },
+          };
+        });
       }
     });
 
@@ -103,6 +105,37 @@ export function useMessages(userId?: number) {
       messages: { ...prev.messages, [conversationId]: response.data as Message[] },
     }));
   }, []);
+
+  // Polling léger : fusionne les nouveaux messages sans écraser les messages en cours d'envoi
+  const pollMessages = useCallback(async (conversationId: number) => {
+    const response = await apiGet(`/api/conversations/${conversationId}/messages?limit=50`);
+    if (!response.ok || !Array.isArray(response.data)) return;
+    const incoming = response.data as Message[];
+    setState((prev) => {
+      const current = prev.messages[conversationId] ?? [];
+      // Garde les messages temporaires (id < 0) en attente de confirmation
+      const pending = current.filter((m) => m.id < 0);
+      return {
+        ...prev,
+        messages: { ...prev.messages, [conversationId]: [...incoming, ...pending] },
+      };
+    });
+  }, []);
+
+  // Ref pour éviter les captures obsolètes dans l'intervalle de polling
+  const activeIdRef = useRef(activeConversationId);
+  useEffect(() => { activeIdRef.current = activeConversationId; }, [activeConversationId]);
+
+  // Polling toutes les 3s sur la conversation active (le WS backend n'émet pas encore)
+  useEffect(() => {
+    if (!activeConversationId || activeConversationId === DRAFT_BOT_CONVERSATION_ID) return;
+    const timer = setInterval(() => {
+      const id = activeIdRef.current;
+      if (!id || id === DRAFT_BOT_CONVERSATION_ID) return;
+      void pollMessages(id);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [activeConversationId, pollMessages]);
 
   // Defensive: whenever the active conversation changes to a real one,
   // make sure its messages are loaded (covers edge cases like last conv after deletion).
@@ -198,11 +231,59 @@ export function useMessages(userId?: number) {
         return;
       }
 
-      await apiPost(`/api/conversations/${conversationId}/messages`, {
+      // ── Conversation normale (non-bot) ──────────────────────────────────
+      // 1. Affichage optimiste immédiat avec un ID temporaire négatif
+      const tempId = -Date.now();
+      const tempMessage: Message = {
+        id: tempId,
+        conversationId,
+        senderId: userId ?? 0,
+        content,
+        type: "text",
+        createdAt: new Date(),
+        isRead: true,
+      };
+
+      setState((prev) => ({
+        ...prev,
+        messages: {
+          ...prev.messages,
+          [conversationId]: [...(prev.messages[conversationId] ?? []), tempMessage],
+        },
+      }));
+
+      // 2. Envoi réel au serveur
+      const res = await apiPost(`/api/conversations/${conversationId}/messages`, {
         content,
         type: "text",
       });
-      await loadMessages(conversationId);
+
+      if (res.ok && res.data) {
+        // 3a. Remplace le message temporaire par le vrai (avec l'ID serveur)
+        const { id: realId, createdAt } = res.data as { id: number; createdAt: string };
+        setState((prev) => ({
+          ...prev,
+          messages: {
+            ...prev.messages,
+            [conversationId]: (prev.messages[conversationId] ?? []).map((m) =>
+              m.id === tempId
+                ? { ...tempMessage, id: realId, createdAt: new Date(createdAt) }
+                : m
+            ),
+          },
+        }));
+      } else {
+        // 3b. Rollback si erreur serveur
+        setState((prev) => ({
+          ...prev,
+          messages: {
+            ...prev.messages,
+            [conversationId]: (prev.messages[conversationId] ?? []).filter(
+              (m) => m.id !== tempId
+            ),
+          },
+        }));
+      }
     },
     [state.conversations, userId, loadMessages, loadConversations]
   );

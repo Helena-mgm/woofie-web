@@ -1,5 +1,5 @@
 // Singleton WebSocket service pour le chat
-import { WSMessage } from '@/shared/types/chat';
+import type { WSMessage, OutboundWSMessage } from '@/shared/types/chat';
 
 const wsDebugEnabled = process.env.NEXT_PUBLIC_WS_DEBUG === 'true';
 
@@ -123,7 +123,7 @@ class ChatWebSocketService {
     return () => this.handlers.delete(handler);
   }
 
-  public send(message: Partial<WSMessage>): void {
+  public send(message: OutboundWSMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
@@ -136,7 +136,6 @@ class ChatWebSocketService {
   public sendMessage(conversationId: number, content: string): void {
     this.send({
       type: 'message',
-      // @ts-expect-error - WebSocket data format
       data: { conversationId, content },
     });
   }
@@ -156,7 +155,6 @@ class ChatWebSocketService {
   ): void {
     this.send({
       type: 'call',
-      // @ts-expect-error - WebSocket data format
       data: { conversationId, type, participants, status: 'ringing' },
     });
   }

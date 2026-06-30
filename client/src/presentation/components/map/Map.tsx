@@ -29,6 +29,15 @@ if (typeof window !== 'undefined') {
 
 const mapDebugEnabled = process.env.NEXT_PUBLIC_MAP_DEBUG === 'true';
 
+/** Échappe les caractères HTML pour éviter les injections XSS dans les popups MapLibre */
+const escapeHtml = (str: string): string =>
+  str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 type BoundsSnapshot = {
   south: number;
   west: number;
@@ -317,29 +326,22 @@ export function Map({
         const popup = new Popup({ 
           offset: 25,
           closeButton: true,
-          closeOnClick: true, // Ferme aussi au clic sur la carte
+          closeOnClick: true,
           closeOnMove: false,
-          maxWidth: '300px',
-          className: 'event-popup', // Custom class for styling
+          maxWidth: '320px',
+          className: 'event-popup',
         }).setHTML(`
-          <div class="p-4 min-w-[250px]">
-            <div class="flex items-start gap-3 mb-3">
-              <div class="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg width="20" height="20" fill="#92400e" viewBox="0 0 512 512">
-                  <path d="M226.5 92.9c14.3 42.9-.3 86.2-32.6 96.8s-70.1-15.6-84.4-58.5s.3-86.2 32.6-96.8s70.1 15.6 84.4 58.5zM100.4 198.6c18.9 32.4 14.3 70.1-10.2 84.1s-59.7-.9-78.5-33.3S-2.7 179.3 21.8 165.3s59.7 .9 78.5 33.3zM69.2 401.2C121.6 259.9 214.7 224 256 224s134.4 35.9 186.8 177.2c3.6 9.7 5.2 20.1 5.2 30.5v1.6c0 25.8-20.9 46.7-46.7 46.7c-11.5 0-22.9-1.4-34-4.2l-88-22c-15.3-3.8-31.3-3.8-46.6 0l-88 22c-11.1 2.8-22.5 4.2-34 4.2C84.9 480 64 459.1 64 433.3v-1.6c0-10.4 1.6-20.8 5.2-30.5zM421.8 282.7c-24.5-14-29.1-51.7-10.2-84.1s54-47.3 78.5-33.3s29.1 51.7 10.2 84.1s-54 47.3-78.5 33.3zM310.1 189.7c-32.3-10.6-46.9-53.9-32.6-96.8s52.1-69.1 84.4-58.5s46.9 53.9 32.6 96.8s-52.1 69.1-84.4 58.5z"/>
-                </svg>
-              </div>
-              <div class="flex-1">
-                <h3 class="font-bold text-lg text-gray-900 leading-tight">${event.name}</h3>
+          <div style="font-family:system-ui,sans-serif; padding:14px 16px; min-width:240px;">
+            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+              <div style="flex-shrink:0;width:40px;height:40px;background:#FFF3E0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;">🎉</div>
+              <div style="flex:1;min-width:0;">
+                <p style="font-size:15px;font-weight:700;color:#1f2937;margin:0 0 2px;line-height:1.3;">${escapeHtml(event.name)}</p>
               </div>
             </div>
-            <p class="text-gray-700 text-sm leading-relaxed mb-3">${event.description || 'Événement pour chiens'}</p>
-            <div class="flex items-center gap-2 text-xs text-gray-500 border-t pt-3">
-              <svg width="14" height="14" fill="currentColor" viewBox="0 0 384 512">
-                <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/>
-              </svg>
-              <span>Événement pour chiens</span>
-            </div>
+            <p style="font-size:13px;color:#4b5563;margin:0 0 10px;line-height:1.5;">${escapeHtml(event.description || '')}</p>
+            <a href="/events" style="display:block;text-align:center;padding:7px 16px;background:#D2691E;color:#fff;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">
+              Voir les événements →
+            </a>
           </div>
         `);
 
@@ -366,7 +368,7 @@ export function Map({
           <svg width="26" height="26" fill="white" viewBox="0 0 512 512" style="pointer-events: none; position: relative; z-index: 1;">
             <path d="M226.5 92.9c14.3 42.9-.3 86.2-32.6 96.8s-70.1-15.6-84.4-58.5s.3-86.2 32.6-96.8s70.1 15.6 84.4 58.5zM100.4 198.6c18.9 32.4 14.3 70.1-10.2 84.1s-59.7-.9-78.5-33.3S-2.7 179.3 21.8 165.3s59.7 .9 78.5 33.3zM69.2 401.2C121.6 259.9 214.7 224 256 224s134.4 35.9 186.8 177.2c3.6 9.7 5.2 20.1 5.2 30.5v1.6c0 25.8-20.9 46.7-46.7 46.7c-11.5 0-22.9-1.4-34-4.2l-88-22c-15.3-3.8-31.3-3.8-46.6 0l-88 22c-11.1 2.8-22.5 4.2-34 4.2C84.9 480 64 459.1 64 433.3v-1.6c0-10.4 1.6-20.8 5.2-30.5zM421.8 282.7c-24.5-14-29.1-51.7-10.2-84.1s54-47.3 78.5-33.3s29.1 51.7 10.2 84.1s-54 47.3-78.5 33.3zM310.1 189.7c-32.3-10.6-46.9-53.9-32.6-96.8s52.1-69.1 84.4-58.5s46.9 53.9 32.6 96.8s-52.1 69.1-84.4 58.5z"/>
           </svg>
-        `;
+        `; // SVG statique hardcodé — aucune donnée utilisateur injectée
 
         el.addEventListener('mouseenter', () => { el.style.boxShadow = '0 6px 20px rgba(0,0,0,0.5)'; el.style.borderWidth = '4px'; });
         el.addEventListener('mouseleave', () => { el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)'; el.style.borderWidth = '3px'; });

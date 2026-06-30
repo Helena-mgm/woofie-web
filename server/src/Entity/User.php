@@ -35,6 +35,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Assert\Choice(choices: ['owner', 'sitter'], message: 'Type must be owner or sitter')]
     private string $type;
 
+    /** Verified by an admin. Defaults to false — admin must explicitly verify. */
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isVerified = false;
+
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: Owner::class, cascade: ['persist', 'remove'])]
     private ?Owner $owner = null;
 
@@ -120,5 +124,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->owner = $owner;
 
         return $this;
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): self
+    {
+        $this->isVerified = $isVerified;
+
+        return $this;
+    }
+
+    public function isAdmin(): bool
+    {
+        return in_array('ROLE_ADMIN', $this->getRoles(), true);
     }
 }

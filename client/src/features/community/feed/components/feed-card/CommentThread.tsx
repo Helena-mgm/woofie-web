@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { Comment } from "@/shared/types/forum";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
 import { getImageUrl } from "@/infrastructure/config/constants";
+import { useAuth } from "@/presentation/hooks/useAuth";
+import { renderMentionedContent } from "./mentionUtils";
 
 const indent = "pl-10 border-l border-[#F1E5D4]";
 
@@ -77,6 +80,8 @@ type CommentItemProps = {
 };
 
 function CommentItem({ comment, level, onDelete, onReply, onLike }: CommentItemProps) {
+  const { user } = useAuth();
+  const isOwner = user?.id === comment.user.id;
   const [replyOpen, setReplyOpen] = useState(false);
   const [value, setValue] = useState("");
 
@@ -87,28 +92,43 @@ function CommentItem({ comment, level, onDelete, onReply, onLike }: CommentItemP
     setReplyOpen(false);
   };
 
+  const fullName = comment.user.prenom
+    ? `${comment.user.prenom} ${comment.user.nom}`
+    : comment.user.nom;
+
   return (
     <article className={level > 0 ? indent : ""}>
       <div className="flex items-start gap-3">
-        <Avatar
-          src={getImageUrl(comment.user.photo_path)}
-          alt={comment.user.nom}
-          placeholder={comment.user.nom.charAt(0)}
-          className="h-10 w-10"
-        />
+        <Link href={`/profile/${comment.user.id}`} className="shrink-0 hover:opacity-80 transition-opacity">
+          <Avatar
+            src={getImageUrl(comment.user.photo_path)}
+            alt={fullName}
+            placeholder={comment.user.nom.charAt(0)}
+            className="h-10 w-10"
+          />
+        </Link>
         <div className="flex-1 rounded-3xl bg-[#FFF9F1] p-4">
           <header className="flex items-center justify-between text-xs text-[#A0522D]">
-            <span className="font-semibold text-[#6B4A2B]">{comment.user.nom}</span>
+            <Link
+              href={`/profile/${comment.user.id}`}
+              className="font-semibold text-[#6B4A2B] hover:underline"
+            >
+              {fullName}
+            </Link>
             <div className="flex items-center gap-3">
               <button type="button" onClick={() => onLike(comment.id)}>
                 {comment.is_liked ? "💛" : "🤎"} {comment.likes_count ?? 0}
               </button>
-              <button type="button" onClick={() => onDelete(comment.id)}>
-                Supprimer
-              </button>
+              {isOwner && (
+                <button type="button" onClick={() => onDelete(comment.id)}>
+                  Supprimer
+                </button>
+              )}
             </div>
           </header>
-          <p className="mt-2 text-sm text-[#3E2A1B]">{comment.content}</p>
+          <p className="mt-2 text-sm text-[#3E2A1B]">
+            {renderMentionedContent(comment.content)}
+          </p>
           <footer className="mt-3 flex items-center gap-3 text-xs text-[#A0522D]">
             <button type="button" onClick={() => setReplyOpen((prev) => !prev)}>
               Répondre

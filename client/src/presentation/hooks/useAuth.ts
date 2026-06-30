@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient, type QueryKey, type UseQueryOptions } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { apiGet, tokenManager } from '@/shared/lib/api-v2';
+import { apiGet, tokenManager } from '@/shared/lib/api';
 
 export interface UserProfile {
   id: number;
@@ -16,6 +16,8 @@ export interface UserProfile {
   photo_path?: string;
   siret?: string;
   is_verified?: boolean;
+  is_admin?: boolean;
+  roles?: string[];
   bio?: string | null;
   services?: string[];
   price_per_hour?: number | null;

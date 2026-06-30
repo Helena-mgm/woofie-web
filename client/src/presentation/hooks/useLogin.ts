@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiPost, tokenManager } from '@/shared/lib/api-v2';
+import { apiPost, tokenManager } from '@/shared/lib/api';
 import { VALIDATION } from '@/infrastructure/config/constants';
 import type { AuthResponse } from '@/types';
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { getImageUrl } from '@/infrastructure/config/constants';
 
@@ -39,11 +40,12 @@ export function DogProfileHeader({ dog, owner }: DogProfileHeaderProps) {
     >
       {/* Avatar - Instagram style (same as ProfileHeader) */}
       <div className="relative w-36 h-36 rounded-full overflow-hidden border-4 border-gray-200 flex-shrink-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={getImageUrl(dog.photoPath)}
           alt={dog.nom}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
+          sizes="144px"
         />
       </div>
 
@@ -81,11 +83,12 @@ export function DogProfileHeader({ dog, owner }: DogProfileHeaderProps) {
           >
             <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-white">
               {owner.photoPath ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={getImageUrl(owner.photoPath)} 
-                  alt={owner.nom} 
-                  className="w-full h-full object-cover" 
+                <Image
+                  src={getImageUrl(owner.photoPath)}
+                  alt={owner.nom}
+                  fill
+                  className="object-cover"
+                  sizes="40px"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xl bg-gradient-to-br from-gray-100 to-gray-200">
