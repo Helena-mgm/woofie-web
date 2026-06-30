@@ -2,26 +2,34 @@
 FROM node:20-bullseye AS builder
 WORKDIR /app
 
-# Argument pour l'URL de l'API
+# Arguments de build (baked into the client bundle at compile time)
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_ENABLED=false
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_ENABLED=$NEXT_PUBLIC_WS_ENABLED
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci --prefer-offline
 
 COPY . .
 RUN npm run build
 
-# === Runner ===
-FROM node:20-bullseye AS runner
+# === Runner (production — Next.js standalone) ===
+# next.config.ts → output: 'standalone' génère .next/standalone/server.js
+# Ce mode est recommandé en prod : image plus légère, démarrage plus rapide
+FROM node:20-bullseye-slim AS runner
 WORKDIR /app
 
-# Copie les fichiers nécessaires au run
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+ENV NODE_ENV=production
+# Next.js standalone écoute sur PORT / HOSTNAME
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+# Seuls les fichiers nécessaires à l'exécution
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static     ./.next/static
+COPY --from=builder /app/public           ./public
 
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]
 

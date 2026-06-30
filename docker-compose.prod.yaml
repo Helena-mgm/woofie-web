@@ -1,0 +1,132 @@
+# ============================================================
+# 🐾 Woofie — Docker Compose PRODUCTION
+# Domaine : https://woofie.ovh
+# VPS     : 152.228.140.199
+# ============================================================
+# Usage :
+#   cp .env.prod.example .env.prod   # (une seule fois, sur le VPS)
+#   ./deploy.sh                      # premier déploiement (génère SSL)
+#   make prod-update                 # mises à jour suivantes
+# ============================================================
+
+services:
+
+  # ── Base de données PostgreSQL ─────────────────────────────
+  db:
+    image: postgres:15
+    container_name: woofie-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-woofie}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?❌ Variable POSTGRES_PASSWORD obligatoire dans .env.prod}
+      POSTGRES_DB: woofie
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-woofie}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - woofie
+
+  # ── Backend Symfony (PHP-FPM) ──────────────────────────────
+  symfony:
+    build:
+      context: ./server
+    container_name: woofie-backend
+    environment:
+      APP_ENV: prod
+      DEFAULT_URI: "https://woofie.ovh"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-woofie}:${POSTGRES_PASSWORD}@db:5432/woofie?serverVersion=15&charset=utf8"
+      OLLAMA_API_URL: "http://ollama:11434"
+      MESSENGER_TRANSPORT_DSN: "sync://"
+      APP_SECRET: ${APP_SECRET:?❌ Variable APP_SECRET obligatoire dans .env.prod}
+      JWT_SECRET: ${JWT_SECRET:?❌ Variable JWT_SECRET obligatoire dans .env.prod}
+    volumes:
+      # Volume partagé avec nginx pour servir les fichiers uploadés
+      - uploads:/var/www/html/public/uploads
+    expose:
+      - "9000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - woofie
+
+  # ── Frontend Next.js (standalone production) ───────────────
+  nextjs:
+    build:
+      context: ./client
+      args:
+        # URL vide → les requêtes API sont relatives (/api/...) → nginx les route
+        NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_WS_ENABLED: "false"
+    container_name: woofie-frontend
+    environment:
+      NODE_ENV: production
+      # Appels serveur-side (SSR/API routes) → passent par nginx interne
+      INTERNAL_API_BASE: "http://nginx"
+    expose:
+      - "3000"
+    depends_on:
+      - symfony
+    restart: unless-stopped
+    networks:
+      - woofie
+
+  # ── Ollama (LLM pour WoofieBot) ────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: woofie-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    expose:
+      - "11434"
+    restart: unless-stopped
+    networks:
+      - woofie
+
+  # ── Nginx (reverse proxy + SSL) ────────────────────────────
+  nginx:
+    image: nginx:stable-alpine
+    container_name: woofie-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      # Uploads partagés avec symfony
+      - uploads:/var/www/html/public/uploads:ro
+      # Let's Encrypt — challenge ACME (renouvellement auto)
+      - ./certbot/www:/var/www/certbot:ro
+      # Let's Encrypt — certificats SSL
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - symfony
+      - nextjs
+    restart: unless-stopped
+    networks:
+      - woofie
+
+  # ── Certbot (renouvellement SSL automatique) ───────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: woofie-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    # Renouvelle le cert toutes les 12h si nécessaire
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
+    networks:
+      - woofie
+
+volumes:
+  db_data:
+  ollama_data:
+  uploads:
+
+networks:
+  woofie:
+    driver: bridge

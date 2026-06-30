@@ -110,3 +110,54 @@ reset:
 	docker compose build
 	docker compose up -d --wait
 	make up
+
+## ─────────────────────────────────────────────────────────
+## 🚀 Production — https://woofie.ovh
+## ─────────────────────────────────────────────────────────
+DC_PROD = docker compose -f docker-compose.prod.yaml --env-file .env.prod
+
+prod-deploy:
+	@chmod +x deploy.sh && ./deploy.sh
+
+prod-up:
+	$(DC_PROD) up -d
+
+prod-down:
+	$(DC_PROD) down
+
+prod-build:
+	$(DC_PROD) build --no-cache
+
+prod-restart:
+	$(DC_PROD) restart
+
+prod-logs:
+	$(DC_PROD) logs -f
+
+prod-ps:
+	$(DC_PROD) ps
+
+prod-bash:
+	$(DC_PROD) exec symfony bash
+
+prod-migrate:
+	$(DC_PROD) exec symfony php bin/console doctrine:migrations:migrate --no-interaction
+
+prod-cache-clear:
+	$(DC_PROD) exec symfony php bin/console cache:clear --env=prod
+
+prod-dbshell:
+	$(DC_PROD) exec db psql -U woofie -d woofie
+
+prod-ollama:
+	@echo "🤖 Téléchargement du modèle llama3.2..."
+	$(DC_PROD) exec ollama ollama pull llama3.2
+	@echo "✅ Modèle prêt !"
+
+prod-update:
+	@echo "🔄 Mise à jour de Woofie en production..."
+	git pull origin main
+	$(DC_PROD) build --no-cache
+	$(DC_PROD) up -d --force-recreate
+	$(DC_PROD) exec symfony php bin/console doctrine:migrations:migrate --no-interaction || true
+	@echo "✅ Mise à jour terminée → https://woofie.ovh"

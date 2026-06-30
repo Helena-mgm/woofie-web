@@ -32,3 +32,10 @@ yarn-error.log*
 
 # ---- Docker generated ----
 docker-compose.override.yml
+
+# ---- Production secrets (NEVER commit) ----
+# Créez .env.prod à partir de .env.prod.example sur le VPS
+.env.prod
+
+# ---- Let's Encrypt SSL certificates ----
+certbot/
