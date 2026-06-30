@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { Map } from "@/presentation/components/map/Map";
+import type { MapEvent } from "@/shared/types/map";
 
-export default function MapView() {
+interface MapViewProps {
+  events?: MapEvent[];
+}
+
+export default function MapView({ events = [] }: MapViewProps) {
   const [showPoi, setShowPoi] = useState(true);
 
   return (
@@ -11,7 +16,7 @@ export default function MapView() {
       {/* Carte plein écran */}
       <Map
         showPOI={showPoi}
-        events={[]}
+        events={events}
         className="w-full h-full"
       />
 

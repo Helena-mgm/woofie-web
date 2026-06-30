@@ -1,31 +1,17 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Header } from "@/presentation/components/Header";
 import { Footer } from "@/presentation/components/Footer";
-import { LoadingScreen } from "@/presentation/components/home/LoadingScreen";
 import { usePathname } from "next/navigation";
 
 // Routes où le Footer ne doit pas apparaître et où le layout est plein écran
-const FULLSCREEN_ROUTES = ["/community/map", "/messages"];
+const FULLSCREEN_ROUTES = ["/map", "/messages"];
 
 function AppShell({ children }: { children: ReactNode }) {
-  const [showSplash, setShowSplash] = useState(true);
   const pathname = usePathname();
   const isFullscreen = FULLSCREEN_ROUTES.some((r) => pathname.startsWith(r));
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (showSplash) {
-    return <LoadingScreen />;
-  }
 
   return (
     <div className={isFullscreen ? "flex h-full flex-col overflow-hidden" : "flex min-h-full flex-col"}>
@@ -39,7 +25,19 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 
 export function AppProviders({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 2 * 60 * 1000,       // données fraîches 2 min
+            gcTime: 5 * 60 * 1000,           // cache gardé 5 min
+            refetchOnWindowFocus: false,      // pas de re-fetch au focus
+            retry: 1,                         // 1 seule tentative en cas d'erreur
+          },
+        },
+      })
+  );
 
   return (
     <QueryClientProvider client={queryClient}>

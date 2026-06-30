@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import type { Dog } from '@/types';
 import { getImageUrl } from '@/infrastructure/config/constants';
@@ -29,11 +30,12 @@ export function DogList({ dogs }: DogListProps) {
           >
             <Link href={`/dog/${dog.id}`}>
               <div className="relative aspect-square overflow-hidden bg-gray-100 group cursor-pointer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={getImageUrl(dog.photoPath)}
                   alt={dog.nom}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  sizes="(max-width: 768px) 33vw, 200px"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
               </div>

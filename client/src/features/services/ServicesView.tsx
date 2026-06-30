@@ -4,8 +4,9 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { mockDogSitters, availableServices } from "@/infrastructure/data/services";
 import { ServicesHero } from "./components/ServicesHero";
+import { SitterOfferBanner } from "./components/SitterOfferBanner";
 import { useServices } from "./hooks/useServices";
-import { apiGet } from "@/shared/lib/api-v2";
+import { apiGet } from "@/shared/lib/api";
 import type { DogSitter } from "@/shared/types/forum";
 
 const ServiceFilters = dynamic(() => import("./components/ServiceFilters"), {
@@ -66,6 +67,7 @@ export function ServicesView() {
   return (
     <div className="space-y-8">
       <ServicesHero />
+      <SitterOfferBanner />
       <ServiceFilters
         search={query}
         onSearchChange={setQuery}

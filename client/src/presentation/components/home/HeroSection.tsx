@@ -69,9 +69,9 @@ function HeroActions({ isAuthenticated }: { isAuthenticated: boolean }) {
 }
 
 function AuthenticatedActions() {
-  const buttons = [
+    const buttons = [
     { href: '/community', label: '📰 Fil d\'actualité', variant: 'gradient' as const },
-    { href: '/community/map', label: '🗺️ Carte', variant: 'solid' as const },
+    { href: '/map', label: '🗺️ Carte', variant: 'solid' as const },
     { href: '/messages', label: '💬 Messages', variant: 'solid' as const },
     { href: '/services', label: '🐕‍🦺 Services', variant: 'solid' as const },
   ];

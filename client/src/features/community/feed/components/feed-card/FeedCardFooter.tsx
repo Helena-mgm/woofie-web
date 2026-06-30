@@ -22,7 +22,7 @@ export function FeedCardFooter({
   onReply,
   onLikeComment,
 }: FeedCardFooterProps) {
-  const [open, setOpen] = useState(post.comments_count > 0);
+  const [open, setOpen] = useState(false);
 
   return (
     <footer className="space-y-4">

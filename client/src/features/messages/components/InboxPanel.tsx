@@ -14,9 +14,11 @@ type InboxPanelProps = {
 };
 
 function ConvRow({
+  id,
   icon,
   name,
-  subtitle,
+  lastMessage,
+  unreadCount,
   isActive,
   isDraft,
   onSelect,
@@ -25,7 +27,8 @@ function ConvRow({
   id: number;
   icon: React.ReactNode;
   name: string;
-  subtitle: string;
+  lastMessage?: string;
+  unreadCount?: number;
   isActive: boolean;
   isDraft?: boolean;
   onSelect?: () => void;
@@ -37,7 +40,7 @@ function ConvRow({
     <>
       <div
         className={cn(
-          "group relative flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition-colors sm:py-3",
+          "group relative flex items-center gap-3 px-4 py-3 cursor-pointer select-none transition-colors",
           isActive ? "bg-[#FFF0E0]" : "hover:bg-[#FDF7F2]"
         )}
         onClick={onSelect}
@@ -47,32 +50,46 @@ function ConvRow({
         )}
         <div
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9",
+            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
             isDraft
               ? "bg-[#D2691E]/10 border border-dashed border-[#D2691E]/40"
               : "bg-[#F5EDE1]"
           )}
         >
           {icon}
+          {!!unreadCount && unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#D2691E] text-[9px] font-bold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p
             className={cn(
-              "truncate text-sm font-semibold sm:text-sm",
-              isActive ? "text-[#3E2A1B]" : "text-[#4A3020]"
+              "truncate text-sm font-semibold",
+              isActive ? "text-[#3E2A1B]" : "text-[#4A3020]",
+              unreadCount ? "font-bold" : ""
             )}
           >
             {name}
           </p>
-          <p className="truncate text-xs text-[#A07050] sm:text-xs">{subtitle}</p>
+          {lastMessage ? (
+            <p className={cn(
+              "truncate text-xs",
+              unreadCount ? "font-semibold text-[#7A4020]" : "text-[#A07050]"
+            )}>
+              {lastMessage}
+            </p>
+          ) : (
+            <p className="truncate text-xs text-[#A07050]">
+              {isDraft ? "En attente de votre message…" : "Démarrer la conversation"}
+            </p>
+          )}
         </div>
         {onDelete && !isDraft && (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmDelete(true);
-            }}
+            onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
             aria-label="Supprimer"
             className={cn(
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all",
@@ -102,10 +119,7 @@ function ConvRow({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setConfirmDelete(false);
-                  onDelete?.();
-                }}
+                onClick={() => { setConfirmDelete(false); onDelete?.(); }}
                 className="rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
               >
                 Supprimer
@@ -126,15 +140,17 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function InboxPanel({
-  conversations,
-  activeId,
-  loading,
-  onSelect,
-  onDelete,
-}: InboxPanelProps) {
+export function InboxPanel({ conversations, activeId, loading, onSelect, onDelete }: InboxPanelProps) {
   const bots = conversations.filter((c) => c.type === "bot");
-  const regular = conversations.filter((c) => c.type !== "bot");
+  const groups = conversations.filter((c) => c.type === "group");
+  const directs = conversations.filter((c) => c.type === "direct");
+
+  const lastMsgText = (conv: Conversation) => {
+    if (!conv.lastMessage) return undefined;
+    const lm = conv.lastMessage;
+    if (lm.type === "system") return `ℹ️ ${lm.content}`;
+    return lm.content;
+  };
 
   return (
     <aside className="flex w-full flex-col overflow-hidden bg-white lg:w-72 lg:border-r lg:border-[#EDE0D0]">
@@ -161,7 +177,6 @@ export function InboxPanel({
             id={-1}
             icon={<Bot size={16} className="text-[#D2691E]" />}
             name="Nouvelle discussion"
-            subtitle="En attente de votre message…"
             isActive
             isDraft
           />
@@ -178,7 +193,8 @@ export function InboxPanel({
               id={conv.id}
               icon={<Bot size={16} className="text-[#D2691E]" />}
               name={conv.name ?? "WoofieBot"}
-              subtitle="Assistant IA canin"
+              lastMessage={lastMsgText(conv)}
+              unreadCount={conv.unreadCount}
               isActive={activeId === conv.id}
               onSelect={() => onSelect(conv.id)}
               onDelete={onDelete ? () => onDelete(conv.id) : undefined}
@@ -186,32 +202,51 @@ export function InboxPanel({
           ))
         )}
 
-        {regular.length > 0 && (
+        {directs.length > 0 && (
           <>
-            <SectionLabel>Discussions</SectionLabel>
-            {regular.map((conv) => (
+            <SectionLabel>Messages privés</SectionLabel>
+            {directs.map((conv) => {
+              const other = conv.participants.find((p) => p.id !== activeId) ?? conv.participants[0];
+              return (
+                <ConvRow
+                  key={conv.id}
+                  id={conv.id}
+                  icon={<MessageCircle size={16} className="text-[#A0522D]" />}
+                  name={other?.name ?? conv.name ?? "Conversation"}
+                  lastMessage={lastMsgText(conv)}
+                  unreadCount={conv.unreadCount}
+                  isActive={activeId === conv.id}
+                  onSelect={() => onSelect(conv.id)}
+                  onDelete={onDelete ? () => onDelete(conv.id) : undefined}
+                />
+              );
+            })}
+          </>
+        )}
+
+        {groups.length > 0 && (
+          <>
+            <SectionLabel>Groupes</SectionLabel>
+            {groups.map((conv) => (
               <ConvRow
                 key={conv.id}
                 id={conv.id}
-                icon={
-                  conv.type === "group" ? (
-                    <Users size={16} className="text-[#A0522D]" />
-                  ) : (
-                    <MessageCircle size={16} className="text-[#A0522D]" />
-                  )
-                }
-                name={conv.name ?? "Conversation"}
-                subtitle={
-                  conv.unreadCount > 0
-                    ? `${conv.unreadCount} message${conv.unreadCount > 1 ? "s" : ""} non lu${conv.unreadCount > 1 ? "s" : ""}`
-                    : "Tout est lu"
-                }
+                icon={<Users size={16} className="text-[#A0522D]" />}
+                name={conv.name ?? "Groupe"}
+                lastMessage={lastMsgText(conv)}
+                unreadCount={conv.unreadCount}
                 isActive={activeId === conv.id}
                 onSelect={() => onSelect(conv.id)}
                 onDelete={onDelete ? () => onDelete(conv.id) : undefined}
               />
             ))}
           </>
+        )}
+
+        {!loading && conversations.length === 0 && activeId !== -1 && (
+          <div className="px-4 py-6 text-center text-xs text-[#B08060]">
+            Aucune conversation. Commencez à discuter avec WoofieBot !
+          </div>
         )}
       </div>
     </aside>

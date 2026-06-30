@@ -51,8 +51,33 @@ class Dog
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
 
+    #[ORM\Column(type: 'string', length: 20, nullable: true)]
+    private ?string $taille = null;
+
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $photoPath = null;
+
+    // ── Alertes chien perdu (§3.6 CdCF) ────────────────────────────────────
+    #[ORM\Column(type: 'boolean')]
+    private bool $isLost = false;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $lostSince = null;
+
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $lostLocation = null;
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $lostLat = null;
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $lostLng = null;
+
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $lostContact = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $lostDescription = null;
 
     #[ORM\OneToMany(mappedBy: 'dog', targetEntity: DogPhoto::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['displayOrder' => 'ASC'])]
@@ -173,9 +198,64 @@ class Dog
         return $this;
     }
 
+    public function getTaille(): ?string { return $this->taille; }
+    public function setTaille(?string $t): self { $this->taille = $t; return $this; }
+
+    public function isLost(): bool { return $this->isLost; }
+    public function setIsLost(bool $l): self { $this->isLost = $l; return $this; }
+
+    public function getLostSince(): ?\DateTimeInterface { return $this->lostSince; }
+    public function setLostSince(?\DateTimeInterface $d): self { $this->lostSince = $d; return $this; }
+
+    public function getLostLocation(): ?string { return $this->lostLocation; }
+    public function setLostLocation(?string $l): self { $this->lostLocation = $l; return $this; }
+
+    public function getLostLat(): ?float { return $this->lostLat; }
+    public function setLostLat(?float $lat): self { $this->lostLat = $lat; return $this; }
+
+    public function getLostLng(): ?float { return $this->lostLng; }
+    public function setLostLng(?float $lng): self { $this->lostLng = $lng; return $this; }
+
+    public function getLostContact(): ?string { return $this->lostContact; }
+    public function setLostContact(?string $c): self { $this->lostContact = $c; return $this; }
+
+    public function getLostDescription(): ?string { return $this->lostDescription; }
+    public function setLostDescription(?string $d): self { $this->lostDescription = $d; return $this; }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function toArray(): array
+    {
+        $age = null;
+        if ($this->dateNaissance) {
+            $age = (int) $this->dateNaissance->diff(new \DateTime())->y;
+        }
+        return [
+            'id'              => $this->id,
+            'name'            => $this->nom,
+            'icadNumber'      => $this->icadNumber,
+            'icadType'        => $this->icadType,
+            'race'            => $this->race,
+            'taille'          => $this->taille,
+            'sexe'            => $this->sexe,
+            'age'             => $age,
+            'dateNaissance'   => $this->dateNaissance?->format('Y-m-d'),
+            'description'     => $this->description,
+            'photo'           => $this->photoPath,
+            'isLost'          => $this->isLost,
+            'lostSince'       => $this->lostSince?->format('c'),
+            'lostLocation'    => $this->lostLocation,
+            'lostLat'         => $this->lostLat,
+            'lostLng'         => $this->lostLng,
+            'lostContact'     => $this->lostContact,
+            'lostDescription' => $this->lostDescription,
+            'ownerName'       => $this->owner?->getFullName(),
+            'ownerId'         => $this->owner?->getId(),
+            'createdAt'       => $this->createdAt->format('c'),
+        ];
     }
 
     /**

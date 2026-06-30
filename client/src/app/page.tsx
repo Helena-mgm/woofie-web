@@ -1,7 +1,6 @@
 'use client';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { AnimatedPawPrints } from '@/presentation/components/home/AnimatedPawPrints';
-import { LoadingScreen } from '@/presentation/components/home/LoadingScreen';
 import { HeroSection } from '@/presentation/components/home/HeroSection';
 import { FeaturesSection } from '@/presentation/components/home/FeaturesSection';
 import { CTASection } from '@/presentation/components/home/CTASection';
@@ -9,14 +8,10 @@ import { CTASection } from '@/presentation/components/home/CTASection';
 /**
  * Page d'accueil principale
  * Règle: < 50 lignes, composition de composants uniquement
+ * Perf: rendu immédiat sans attendre auth (les CTAs s'adaptent une fois auth résolu)
  */
 export default function Home() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
+  const { user } = useAuth();
   const isAuthenticated = !!user;
 
   return (

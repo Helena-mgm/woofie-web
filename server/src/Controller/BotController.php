@@ -129,9 +129,9 @@ class BotController extends AbstractController
         );
 
         $historyArray = array_map(fn($msg) => [
-            'role' => $msg->getSender()->getId() === $user->getId() ? 'user' : 'assistant',
+            'role' => $msg->getSender()?->getId() === $user->getId() ? 'user' : 'assistant',
             'content' => $msg->getContent()
-        ], $history);
+        ], array_filter($history, fn($msg) => $msg->getType() !== 'system'));
 
         // Sauvegarder le message de l'utilisateur
         $userMessageEntity = new Message();

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { tokenManager } from "@/shared/lib/api-v2";
+import { tokenManager } from "@/shared/lib/api";
 import { AuthGateLoader } from "./components/AuthGateLoader";
 
 export function ProtectRoute({ children }: { children: ReactNode }) {

@@ -50,3 +50,9 @@ body {
 .wb-loading footer {
   display: none !important;
 }
+
+/* Animation CSS des empreintes de pattes (AnimatedPawPrints) */
+@keyframes pawFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%       { transform: translateY(-20px) rotate(8deg); }
+}

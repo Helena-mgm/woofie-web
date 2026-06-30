@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ProtectRoute } from '@/features/security/ProtectRoute';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { availableServices } from '@/infrastructure/data/services';
-import { apiGet, apiPut } from '@/shared/lib/api-v2';
+import { apiGet, apiPut } from '@/shared/lib/api';
 import { Input, Button } from '@/presentation/components/ui';
 import { Textarea } from '@/shared/ui/textarea';
 import { LIMITS } from '@/infrastructure/config/constants';

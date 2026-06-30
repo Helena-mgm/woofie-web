@@ -16,6 +16,9 @@ const PUBLIC_ROUTES = [
   '/privacy',
   '/terms',
   '/cookies',
+  '/events',    // events are publicly viewable; join/create actions require auth client-side
+  '/map',       // map is publicly viewable
+  '/lost-dogs', // lost dog alerts are publicly viewable
 ];
 
 /**
@@ -83,6 +86,7 @@ export const config = {
      * - public assets (images, etc.)
      */
     // Exclude Next internals (/_next/*), API and public assets from authentication middleware
-    '/((?!api|_next|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+      // Exclude Next internals, API routes and our dev-only client-api from auth middleware
+      '/((?!api|client-api|_next|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

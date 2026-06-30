@@ -22,7 +22,8 @@ export function useFeed() {
 
   const refresh = useCallback(() => loadFeed(dispatch), []);
   const publish = useCallback(
-    (payload: { content: string; images?: File[] }) => publishPost(dispatch, payload),
+    (payload: { content: string; dogIds?: number[]; images?: File[] }) =>
+      publishPost(dispatch, payload),
     []
   );
   const likePost = useCallback(

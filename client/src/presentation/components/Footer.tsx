@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+// framer-motion retiré du layout → CSS transitions pures
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -59,16 +59,14 @@ export function Footer() {
                 { icon: '🐦', name: 'Twitter', href: '#' },
                 { icon: '💼', name: 'LinkedIn', href: '#' },
               ].map((social) => (
-                <motion.a
+                <a
                   key={social.name}
                   href={social.href}
-                  whileHover={{ scale: 1.1, y: -2 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-xl transition-colors"
+                  className="w-10 h-10 bg-white/10 hover:bg-white/20 hover:scale-110 hover:-translate-y-0.5 rounded-full flex items-center justify-center text-xl transition-all duration-150"
                   aria-label={social.name}
                 >
                   {social.icon}
-                </motion.a>
+                </a>
               ))}
             </div>
           </div>
@@ -140,13 +138,11 @@ export function Footer() {
                 placeholder="Votre email"
                 className="flex-1 px-4 py-2 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D2691E]"
               />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-6 py-2 bg-[#D2691E] hover:bg-[#FF8C00] rounded-full font-semibold transition-colors"
+              <button
+                className="px-6 py-2 bg-[#D2691E] hover:bg-[#FF8C00] hover:scale-105 active:scale-95 rounded-full font-semibold transition-all duration-150"
               >
                 S&apos;abonner
-              </motion.button>
+              </button>
             </div>
           </div>
         </div>

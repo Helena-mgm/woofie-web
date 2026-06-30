@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/presentation/hooks/useAuth";
 import { useMessages } from "./hooks/useMessages";
 import { cn } from "@/shared/lib/cn";
@@ -34,6 +34,19 @@ export function MessagesView() {
     editMessage,
     deleteConversation,
   } = useMessages(user?.id);
+
+  // Ouvrir automatiquement la conversation demandée (ex: depuis /services)
+  useEffect(() => {
+    if (loading) return;
+    const stored = sessionStorage.getItem('openConversation');
+    if (!stored) return;
+    const id = parseInt(stored, 10);
+    sessionStorage.removeItem('openConversation');
+    if (!isNaN(id)) {
+      selectConversation(id);
+      setMobileView('thread');
+    }
+  }, [loading, selectConversation]);
 
   const handleSelect = (id: number) => {
     selectConversation(id);

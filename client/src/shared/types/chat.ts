@@ -5,6 +5,9 @@ export interface ChatUser {
   avatar?: string;
   isOnline: boolean;
   lastSeen?: Date;
+  isAdmin?: boolean;
+  isVerified?: boolean;
+  type?: 'owner' | 'sitter';
 }
 
 export interface Message {
@@ -12,7 +15,7 @@ export interface Message {
   conversationId: number;
   senderId: number;
   content: string;
-  type: 'text' | 'image' | 'file' | 'audio' | 'video' | 'bot';
+  type: 'text' | 'image' | 'file' | 'audio' | 'video' | 'bot' | 'system';
   createdAt: Date;
   isRead: boolean;
   replyTo?: number;
@@ -22,7 +25,13 @@ export interface Conversation {
   id: number;
   type: 'direct' | 'group' | 'bot';
   participants: ChatUser[];
-  lastMessage?: Message;
+  lastMessage?: {
+    id: number;
+    content: string;
+    type: Message['type'];
+    senderId: number | null;
+    createdAt: string;
+  };
   unreadCount: number;
   name?: string; // For groups
   avatar?: string;
@@ -70,3 +79,10 @@ export type WSMessage =
   | { type: 'read'; data: { conversationId: number; messageId: number } }
   | { type: 'call'; data: CallSession }
   | { type: 'user_status'; data: { userId: number; isOnline: boolean } };
+
+/** Payloads envoyés au serveur (sous-ensemble de WSMessage) */
+export type OutboundWSMessage =
+  | { type: 'message'; data: { conversationId: number; content: string } }
+  | { type: 'typing'; data: { conversationId: number; userId: number } }
+  | { type: 'read'; data: { conversationId: number; messageId: number } }
+  | { type: 'call'; data: { conversationId: number; type: 'voice' | 'video'; participants: number[]; status: 'ringing' } };

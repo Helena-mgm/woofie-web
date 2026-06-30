@@ -81,12 +81,8 @@ export const validateLuhn = (siret: string): boolean => {
 };
 
 /**
- * Vérifie si le SIRET existe dans la base de données Sirene (API publique INSEE)
- * 
- * API Sirene : https://api.insee.fr/entreprises/sirene/V3/
- * Note : Nécessite une clé API INSEE pour la production
- * 
- * Pour l'instant, on utilise l'API publique sans authentification (quota limité)
+ * Vérifie si le SIRET est valide en passant par le backend Woofie
+ * (évite les problèmes CORS et de clé API INSEE côté client)
  */
 export const checkSiretExistence = async (siret: string): Promise<{
   exists: boolean;
@@ -94,55 +90,35 @@ export const checkSiretExistence = async (siret: string): Promise<{
   error?: string;
 }> => {
   const normalized = normalizeSiret(siret);
-  
+
   if (!isValidFormat(normalized)) {
     return { exists: false, error: 'Format SIRET invalide' };
   }
-  
+
   try {
-    // API Sirene publique (sans authentification, quota limité)
-    // En production, il faudra obtenir une clé API INSEE
-    const response = await fetch(
-      `https://api.insee.fr/entreprises/sirene/V3/siret/${normalized}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
-    
-    if (response.status === 404) {
-      return { exists: false, error: 'SIRET non trouvé dans la base Sirene' };
-    }
-    
-    if (response.status === 403 || response.status === 401) {
-      // Pas de clé API, mais on continue (on validera juste le format et Luhn)
-      console.warn('API Sirene: Authentification requise. Validation limitée au format.');
-      return { exists: false, error: 'Vérification API non disponible (nécessite clé API INSEE)' };
-    }
-    
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+    const response = await fetch(`${baseUrl}/api/siret/${normalized}`);
+
     if (!response.ok) {
-      throw new Error(`API Sirene error: ${response.status}`);
+      return { exists: false, error: `Erreur serveur (${response.status})` };
     }
-    
+
     const data = await response.json();
-    
-    // Extraction du nom de l'entreprise
-    const companyName = 
-      data.etablissement?.uniteLegale?.denominationUniteLegale ||
-      data.etablissement?.uniteLegale?.prenomUsuelUniteLegale + ' ' + data.etablissement?.uniteLegale?.nomUniteLegale ||
-      'Entreprise trouvée';
-    
-    return { 
-      exists: true, 
-      companyName: companyName.trim() 
+
+    if (!data.isValid) {
+      return { exists: false, error: data.message };
+    }
+
+    return {
+      exists: data.exists ?? false,
+      companyName: data.companyName ?? undefined,
+      error: data.exists ? undefined : (data.message || 'Vérification API non disponible'),
     };
-    
   } catch (error) {
     console.error('Erreur vérification SIRET:', error);
-    return { 
-      exists: false, 
-      error: 'Erreur lors de la vérification du SIRET' 
+    return {
+      exists: false,
+      error: 'Erreur lors de la vérification du SIRET',
     };
   }
 };
