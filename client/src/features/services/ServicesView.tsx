@@ -9,6 +9,8 @@ import { useServices } from "./hooks/useServices";
 import { apiGet } from "@/shared/lib/api";
 import type { DogSitter } from "@/shared/types/forum";
 
+const mockDataEnabled = process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA === 'true' || process.env.NODE_ENV !== 'production';
+
 const ServiceFilters = dynamic(() => import("./components/ServiceFilters"), {
   ssr: false,
   loading: () => <div className="h-32 rounded-3xl bg-white/70 animate-pulse" />,
@@ -36,9 +38,12 @@ export function ServicesView() {
       if (ok && Array.isArray(data)) {
         setDataset(data as DogSitter[]);
         setIsFallback(false);
-      } else {
+      } else if (mockDataEnabled) {
         setDataset(mockDogSitters);
         setIsFallback(true);
+      } else {
+        setDataset([]);
+        setIsFallback(false);
       }
 
       setLoading(false);

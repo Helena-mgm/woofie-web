@@ -5,47 +5,33 @@ namespace App\Controller;
 use App\Entity\Conversation;
 use App\Entity\Message;
 use App\Entity\User;
+use App\Entity\Group;
+use App\Entity\GroupMember;
 use App\Repository\MessageRepository;
-use App\Repository\UserRepository;
+use App\Service\JwtService;
+use App\Service\LoginRateLimiter;
 use App\Service\OllamaService;
 use Doctrine\ORM\EntityManagerInterface;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
-#[Route('/api/conversations/{id}/messages')]
+#[Route('/api/conversations/{id}/messages', requirements: ['id' => '\d+'])]
 class MessageController extends AbstractController
 {
-    private string $jwtKey;
-
     public function __construct(
         private EntityManagerInterface $em,
         private MessageRepository $messageRepo,
-        private UserRepository $userRepo,
-        private OllamaService $ollama
+        private JwtService $jwtService,
+        private OllamaService $ollama,
+        private LoginRateLimiter $rateLimiter
     ) {
-        $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
 
-    private function getUserFromToken(Request $request): ?object
+    private function getUserFromToken(Request $request): ?User
     {
-        $authHeader = $request->headers->get('Authorization');
-        
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return null;
-        }
-
-        $token = substr($authHeader, 7);
-
-        try {
-            return JWT::decode($token, new Key($this->jwtKey, 'HS256'));
-        } catch (\Exception $e) {
-            error_log("[MessageController] JWT decode error: " . $e->getMessage());
-            return null;
-        }
+        return $this->jwtService->getUserFromRequest($request);
     }
 
     #[Route('', methods: ['GET'])]
@@ -53,25 +39,18 @@ class MessageController extends AbstractController
         Conversation $conversation,
         Request $request
     ): JsonResponse {
-        $decoded = $this->getUserFromToken($request);
+        $user = $this->getUserFromToken($request);
         
-        if (!$decoded) {
+        if (!$user) {
             return $this->json(['error' => 'Vous devez être connecté.'], 401);
         }
 
-        $user = $this->userRepo->find($decoded->sub);
-        
-        if (!$user) {
-            return $this->json(['error' => 'Utilisateur non trouvé.'], 404);
-        }
-
-        // Verify user is participant
         if (!$conversation->getParticipants()->contains($user)) {
             return $this->json(['error' => 'Access denied'], 403);
         }
 
-        $limit = $request->query->getInt('limit', 50);
-        $offset = $request->query->getInt('offset', 0);
+        $limit = min(100, max(1, $request->query->getInt('limit', 50)));
+        $offset = max(0, $request->query->getInt('offset', 0));
 
         $messages = $this->messageRepo->findByConversation(
             $conversation,
@@ -97,34 +76,47 @@ class MessageController extends AbstractController
         Conversation $conversation,
         Request $request
     ): JsonResponse {
-        $decoded = $this->getUserFromToken($request);
-        
-        if (!$decoded) {
-            return $this->json(['error' => 'Vous devez être connecté.'], 401);
-        }
-
-        $user = $this->userRepo->find($decoded->sub);
+        $user = $this->getUserFromToken($request);
         
         if (!$user) {
-            return $this->json(['error' => 'Utilisateur non trouvé.'], 404);
+            return $this->json(['error' => 'Vous devez être connecté.'], 401);
         }
 
         if (!$conversation->getParticipants()->contains($user)) {
             return $this->json(['error' => 'Access denied'], 403);
         }
 
+        $group = $this->em->getRepository(Group::class)->findOneBy(['conversation' => $conversation]);
+        if ($group && !$group->isAllowMemberMessages()) {
+            $member = $this->em->getRepository(GroupMember::class)->findOneBy(['group' => $group, 'user' => $user]);
+            if (!$member || !in_array($member->getRole(), ['owner', 'admin'], true)) {
+                return $this->json(['error' => 'Les messages sont désactivés pour les membres'], 403);
+            }
+        }
+
         $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return $this->json(['error' => 'Payload invalide'], 400);
+        }
+
+        $content = trim((string) ($data['content'] ?? ''));
+        if ($content === '' || mb_strlen($content) > 5000) {
+            return $this->json(['error' => 'Message invalide'], 400);
+        }
+
+        $type = $data['type'] ?? 'text';
+        if ($type !== 'text') {
+            return $this->json(['error' => 'Type de message invalide'], 400);
+        }
 
         $message = new Message();
         $message->setConversation($conversation);
         $message->setSender($user);
-        $message->setContent($data['content']);
-        $message->setType($data['type'] ?? 'text');
+        $message->setContent($content);
+        $message->setType($type);
 
         $this->em->persist($message);
         $this->em->flush();
-
-        // TODO: Broadcast via WebSocket
 
         return $this->json([
             'id' => $message->getId(),
@@ -137,37 +129,30 @@ class MessageController extends AbstractController
         Conversation $conversation,
         Request $request
     ): JsonResponse {
-        $decoded = $this->getUserFromToken($request);
+        $user = $this->getUserFromToken($request);
         
-        if (!$decoded) {
+        if (!$user) {
             return $this->json(['error' => 'Vous devez être connecté.'], 401);
         }
 
-        $user = $this->userRepo->find($decoded->sub);
-        
-        if (!$user) {
-            return $this->json(['error' => 'Utilisateur non trouvé.'], 404);
+        if (!$conversation->getParticipants()->contains($user)) {
+            return $this->json(['error' => 'Access denied'], 403);
         }
 
         $this->messageRepo->markAsRead($conversation, $user->getId());
         return $this->json(['success' => true]);
     }
 
-    #[Route('/{messageId}', methods: ['PATCH'])]
+    #[Route('/{messageId}', methods: ['PATCH'], requirements: ['messageId' => '\d+'])]
     public function update(
         Conversation $conversation,
         int $messageId,
         Request $request
     ): JsonResponse {
-        $decoded = $this->getUserFromToken($request);
+        $user = $this->getUserFromToken($request);
 
-        if (!$decoded) {
-            return $this->json(['error' => 'Vous devez être connecté.'], 401);
-        }
-
-        $user = $this->userRepo->find($decoded->sub);
         if (!$user) {
-            return $this->json(['error' => 'Utilisateur non trouvé.'], 404);
+            return $this->json(['error' => 'Vous devez être connecté.'], 401);
         }
 
         if (!$conversation->getParticipants()->contains($user)) {
@@ -188,10 +173,14 @@ class MessageController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        $newContent = trim((string)($data['content'] ?? ''));
+        if (!is_array($data)) {
+            return $this->json(['error' => 'Payload invalide.'], 400);
+        }
 
-        if ($newContent === '') {
-            return $this->json(['error' => 'Le message ne peut pas être vide.'], 400);
+        $newContent = trim((string) ($data['content'] ?? ''));
+
+        if ($newContent === '' || mb_strlen($newContent) > 5000) {
+            return $this->json(['error' => 'Message invalide.'], 400);
         }
 
         $message->setContent($newContent);
@@ -200,8 +189,11 @@ class MessageController extends AbstractController
         $botPayload = null;
         $regeneratedBotMessage = null;
 
-        // Si conversation bot, on régénère la prochaine réponse IA
         if ($conversation->getType() === 'bot') {
+            if ($retryAfter = $this->rateLimiter->assertBotAllowed((string) $user->getId())) {
+                return $this->json(['error' => 'Trop de requêtes. Réessayez plus tard.'], 429, ['Retry-After' => (string) $retryAfter]);
+            }
+
             $history = $this->messageRepo->createQueryBuilder('m')
                 ->where('m.conversation = :conversation')
                 ->andWhere('m.id < :messageId')
@@ -221,7 +213,6 @@ class MessageController extends AbstractController
                 $history
             );
 
-            // Supprimer tous les messages après celui modifié (rebrancher la conversation)
             $this->messageRepo->createQueryBuilder('m')
                 ->delete()
                 ->where('m.conversation = :conversation')
@@ -235,7 +226,7 @@ class MessageController extends AbstractController
 
             $newBotMessage = new Message();
             $newBotMessage->setConversation($conversation);
-            $newBotMessage->setSender($user); // TODO: utiliser un vrai sender bot dédié
+            $newBotMessage->setSender(null);
             $newBotMessage->setType('bot');
             $newBotMessage->setContent($newBotResponse);
             $this->em->persist($newBotMessage);

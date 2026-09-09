@@ -6,55 +6,46 @@ use App\Entity\Post;
 use App\Entity\PostLike;
 use App\Entity\PostComment;
 use App\Entity\PostImage;
+use App\Entity\PostCommentLike;
+use App\Entity\Sitter;
+use App\Entity\User;
 use App\Repository\PostRepository;
 use App\Repository\ForbiddenKeywordRepository;
 use App\Repository\DogRepository;
-use App\Repository\UserRepository;
+use App\Service\ImageUploadService;
+use App\Service\JwtService;
 use Doctrine\ORM\EntityManagerInterface;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Routing\Annotation\Route;
 
 #[Route('/api/posts')]
 class ForumController extends AbstractController
 {
-    private string $jwtKey;
-
-    public function __construct(private EntityManagerInterface $em)
+    public function __construct(
+        private EntityManagerInterface $em,
+        private ImageUploadService $imageUploadService,
+        private JwtService $jwtService
+    )
     {
-        $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
 
-    private function getUserFromToken(Request $request, UserRepository $userRepository): ?\App\Entity\User
+    private function getUserFromToken(Request $request): ?\App\Entity\User
     {
-        $authHeader = $request->headers->get('Authorization');
-        
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return null;
-        }
-
-        $token = substr($authHeader, 7);
-
-        try {
-            $decoded = JWT::decode($token, new Key($this->jwtKey, 'HS256'));
-            return $userRepository->find($decoded->sub);
-        } catch (\Exception $e) {
-            return null;
-        }
+        return $this->jwtService->getUserFromRequest($request);
     }
 
     #[Route('', name: 'app_forum_list', methods: ['GET'])]
-    public function list(Request $request, PostRepository $postRepository, UserRepository $userRepository): JsonResponse
+    public function list(Request $request, PostRepository $postRepository): JsonResponse
     {
-        $limit = $request->query->getInt('limit', 20);
-        $offset = $request->query->getInt('offset', 0);
+        $limit = min(50, max(1, $request->query->getInt('limit', 20)));
+        $offset = min(10000, max(0, $request->query->getInt('offset', 0)));
 
         $posts = $postRepository->findRecent($limit, $offset);
-        $currentUser = $this->getUserFromToken($request, $userRepository);
+        $currentUser = $this->getUserFromToken($request);
 
         $data = array_map(function (Post $post) use ($currentUser) {
             return $this->serializePost($post, $currentUser);
@@ -64,114 +55,126 @@ class ForumController extends AbstractController
     }
 
     #[Route('', name: 'app_forum_create', methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $em, DogRepository $dogRepository, UserRepository $userRepository, ForbiddenKeywordRepository $forbiddenRepo): JsonResponse
+    public function create(Request $request, EntityManagerInterface $em, DogRepository $dogRepository, ForbiddenKeywordRepository $forbiddenRepo): JsonResponse
     {
-        $user = $this->getUserFromToken($request, $userRepository);
+        $user = $this->getUserFromToken($request);
         if (!$user) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $content = $request->request->get('content');
-        if (empty($content)) {
+        if (!is_string($content) || trim($content) === '' || mb_strlen($content) > 5000) {
             return $this->json(['error' => 'Content is required'], Response::HTTP_BAD_REQUEST);
         }
+        $content = trim($content);
 
-        // Check forbidden keywords
-        $keywords = $forbiddenRepo->getAllKeywords();
-        foreach ($keywords as $kw) {
-            if ($kw === '') {
-                continue;
-            }
-            if (mb_stripos($content, $kw) !== false) {
-                return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
-            }
+        if ($this->containsForbiddenKeyword($content, $forbiddenRepo)) {
+            return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
         }
 
         $post = new Post();
         $post->setUser($user);
         $post->setContent($content);
 
-        // Handle dog tags
-        $dogIds = json_decode($request->request->get('dogIds', '[]'), true);
-        if ($dogIds) {
+        $dogIdsRaw = $request->request->get('dogIds', '[]');
+        if (!is_string($dogIdsRaw)) {
+            return $this->json(['error' => 'dogIds invalide'], Response::HTTP_BAD_REQUEST);
+        }
+        $dogIds = json_decode($dogIdsRaw, true);
+        if (!is_array($dogIds) || count($dogIds) > 10) {
+            return $this->json(['error' => 'dogIds invalide'], Response::HTTP_BAD_REQUEST);
+        }
+        if ($dogIds !== []) {
             foreach ($dogIds as $dogId) {
-                $dog = $dogRepository->find($dogId);
-                if ($dog) {
-                    $post->addDog($dog);
+                if (!is_int($dogId) && !ctype_digit((string) $dogId)) {
+                    return $this->json(['error' => 'dogIds invalide'], Response::HTTP_BAD_REQUEST);
                 }
+                $dog = $dogRepository->find((int) $dogId);
+                if (!$dog || $dog->getOwner()?->getUser()?->getId() !== $user->getId()) {
+                    return $this->json(['error' => 'dogIds invalide'], Response::HTTP_BAD_REQUEST);
+                }
+                $post->addDog($dog);
             }
         }
 
-        // Handle images
-        $uploadedFiles = $request->files->all();
-        $displayOrder = 0;
-        foreach ($uploadedFiles as $key => $file) {
+        $imageFiles = [];
+        foreach ($request->files->all() as $key => $file) {
             if (str_starts_with($key, 'image_')) {
-                $filename = uniqid() . '.' . $file->guessExtension();
-                $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/posts';
-                
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0775, true);
+                if (!$file instanceof UploadedFile) {
+                    return $this->json(['error' => 'Image invalide'], Response::HTTP_BAD_REQUEST);
                 }
-                
-                $file->move($uploadDir, $filename);
+                $imageFiles[] = $file;
+            }
+        }
+        if (count($imageFiles) > 5) {
+            return $this->json(['error' => 'Maximum 5 images par post'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $uploadedPaths = [];
+        try {
+            foreach ($imageFiles as $displayOrder => $file) {
+                $uploadDir = (string) $this->getParameter('kernel.project_dir') . '/public/uploads/posts';
+                $imagePath = $this->imageUploadService->storeUploadedImage($file, $uploadDir, '/uploads/posts');
+                $uploadedPaths[] = $imagePath;
 
                 $postImage = new PostImage();
                 $postImage->setPost($post);
-                $postImage->setImagePath('/uploads/posts/' . $filename);
-                $postImage->setDisplayOrder($displayOrder++);
+                $postImage->setImagePath($imagePath);
+                $postImage->setDisplayOrder($displayOrder);
                 $em->persist($postImage);
             }
-        }
 
-        $em->persist($post);
-        $em->flush();
+            $em->persist($post);
+            $em->flush();
+        } catch (\RuntimeException) {
+            $this->removeUploadedFiles($uploadedPaths);
+            return $this->json(['error' => 'Image invalide'], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $exception) {
+            $this->removeUploadedFiles($uploadedPaths);
+            error_log('[ForumController::create] ' . $exception::class);
+            return $this->json(['error' => 'Publication impossible'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         return $this->json($this->serializePost($post, $user), Response::HTTP_CREATED);
     }
 
-    #[Route('/{id}', name: 'app_forum_delete', methods: ['DELETE'])]
-    public function delete(Post $post, Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    #[Route('/{id}', name: 'app_forum_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function delete(Post $post, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $user = $this->getUserFromToken($request, $userRepository);
-        if (!$user || $post->getUser()->getId() !== $user->getId()) {
+        $user = $this->getUserFromToken($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        if ($post->getUser()->getId() !== $user->getId() && !$user->isAdmin()) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
 
-        // Delete associated images from filesystem
-        foreach ($post->getImages() as $image) {
-            $imagePath = $this->getParameter('kernel.project_dir') . '/public' . $image->getImagePath();
-            if (file_exists($imagePath)) {
-                unlink($imagePath);
-            }
-        }
+        $imagePaths = array_map(static fn(PostImage $image): string => $image->getImagePath(), $post->getImages()->toArray());
 
         $em->remove($post);
         $em->flush();
+        $this->removeUploadedFiles($imagePaths);
 
         return $this->json(['message' => 'Post deleted']);
     }
 
-    #[Route('/{id}/like', name: 'app_forum_like', methods: ['POST'])]
-    public function toggleLike(Post $post, Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    #[Route('/{id}/like', name: 'app_forum_like', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleLike(Post $post, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $user = $this->getUserFromToken($request, $userRepository);
+        $user = $this->getUserFromToken($request);
         if (!$user) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Check if already liked
         $existingLike = $em->getRepository(PostLike::class)->findOneBy([
             'post' => $post,
             'user' => $user
         ]);
 
         if ($existingLike) {
-            // Unlike
             $em->remove($existingLike);
             $action = 'unliked';
         } else {
-            // Like
             $like = new PostLike();
             $like->setPost($post);
             $like->setUser($user);
@@ -188,31 +191,30 @@ class ForumController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/comment', name: 'app_forum_comment', methods: ['POST'])]
-    public function addComment(Post $post, Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    #[Route('/{id}/comment', name: 'app_forum_comment', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function addComment(
+        Post $post,
+        Request $request,
+        EntityManagerInterface $em,
+        ForbiddenKeywordRepository $forbiddenRepo
+    ): JsonResponse
     {
-        $user = $this->getUserFromToken($request, $userRepository);
+        $user = $this->getUserFromToken($request);
         if (!$user) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $data = json_decode($request->getContent(), true);
-        $content = $data['content'] ?? '';
+        $content = is_array($data) && is_string($data['content'] ?? null)
+            ? trim($data['content'])
+            : '';
 
-        if (empty($content)) {
-            return $this->json(['error' => 'Content is required'], Response::HTTP_BAD_REQUEST);
+        if ($content === '' || mb_strlen($content) > 2000) {
+            return $this->json(['error' => 'Commentaire invalide'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Check forbidden keywords
-        $forbiddenRepo = $this->em->getRepository(\App\Entity\ForbiddenKeyword::class);
-        $keywords = method_exists($forbiddenRepo, 'getAllKeywords') ? $forbiddenRepo->getAllKeywords() : [];
-        foreach ($keywords as $kw) {
-            if ($kw === '') {
-                continue;
-            }
-            if (mb_stripos($content, $kw) !== false) {
-                return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
-            }
+        if ($this->containsForbiddenKeyword($content, $forbiddenRepo)) {
+            return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
         }
 
         $comment = new PostComment();
@@ -223,26 +225,13 @@ class ForumController extends AbstractController
         $em->persist($comment);
         $em->flush();
 
-        return $this->json([
-            'id' => $comment->getId(),
-            'content' => $comment->getContent(),
-            'createdAt' => $comment->getCreatedAt()->format('c'),
-            'user' => [
-                'id' => $user->getId(),
-                'email' => $user->getEmail(),
-                'owner' => $user->getOwner() ? [
-                    'nom' => $user->getOwner()->getNom(),
-                    'prenom' => $user->getOwner()->getPrenom(),
-                    'fullName' => $user->getOwner()->getFullName(),
-                ] : null
-            ]
-        ], Response::HTTP_CREATED);
+        return $this->json($this->serializeComment($comment, $user), Response::HTTP_CREATED);
     }
 
-    #[Route('/{postId}/comments/{commentId}', name: 'app_forum_delete_comment', methods: ['DELETE'])]
-    public function deleteComment(int $postId, int $commentId, Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    #[Route('/{postId}/comments/{commentId}', name: 'app_forum_delete_comment', methods: ['DELETE'], requirements: ['postId' => '\d+', 'commentId' => '\d+'])]
+    public function deleteComment(int $postId, int $commentId, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $user = $this->getUserFromToken($request, $userRepository);
+        $user = $this->getUserFromToken($request);
         if (!$user) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
@@ -253,7 +242,11 @@ class ForumController extends AbstractController
             return $this->json(['error' => 'Comment not found'], Response::HTTP_NOT_FOUND);
         }
 
-        if ($comment->getUser()->getId() !== $user->getId()) {
+        if ($comment->getPost()?->getId() !== $postId) {
+            return $this->json(['error' => 'Comment not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($comment->getUser()->getId() !== $user->getId() && !$user->isAdmin()) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
 
@@ -263,10 +256,16 @@ class ForumController extends AbstractController
         return $this->json(['message' => 'Comment deleted']);
     }
 
-    #[Route('/{postId}/comments/{commentId}/reply', name: 'app_forum_reply_comment', methods: ['POST'])]
-    public function replyToComment(int $postId, int $commentId, Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    #[Route('/{postId}/comments/{commentId}/reply', name: 'app_forum_reply_comment', methods: ['POST'], requirements: ['postId' => '\d+', 'commentId' => '\d+'])]
+    public function replyToComment(
+        int $postId,
+        int $commentId,
+        Request $request,
+        EntityManagerInterface $em,
+        ForbiddenKeywordRepository $forbiddenRepo
+    ): JsonResponse
     {
-        $user = $this->getUserFromToken($request, $userRepository);
+        $user = $this->getUserFromToken($request);
         if (!$user) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
@@ -281,23 +280,21 @@ class ForumController extends AbstractController
             return $this->json(['error' => 'Comment not found'], Response::HTTP_NOT_FOUND);
         }
 
-        $data = json_decode($request->getContent(), true);
-        $content = $data['content'] ?? '';
-
-        if (empty($content)) {
-            return $this->json(['error' => 'Content is required'], Response::HTTP_BAD_REQUEST);
+        if ($parentComment->getPost()?->getId() !== $post->getId()) {
+            return $this->json(['error' => 'Comment not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Check forbidden keywords
-        $forbiddenRepo = $this->em->getRepository(\App\Entity\ForbiddenKeyword::class);
-        $keywords = method_exists($forbiddenRepo, 'getAllKeywords') ? $forbiddenRepo->getAllKeywords() : [];
-        foreach ($keywords as $kw) {
-            if ($kw === '') {
-                continue;
-            }
-            if (mb_stripos($content, $kw) !== false) {
-                return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
-            }
+        $data = json_decode($request->getContent(), true);
+        $content = is_array($data) && is_string($data['content'] ?? null)
+            ? trim($data['content'])
+            : '';
+
+        if ($content === '' || mb_strlen($content) > 2000) {
+            return $this->json(['error' => 'Commentaire invalide'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($this->containsForbiddenKeyword($content, $forbiddenRepo)) {
+            return $this->json(['error' => 'Content contains forbidden keyword'], Response::HTTP_FORBIDDEN);
         }
 
         $reply = new PostComment();
@@ -312,10 +309,10 @@ class ForumController extends AbstractController
         return $this->json($this->serializeComment($reply, $user), Response::HTTP_CREATED);
     }
 
-    #[Route('/{postId}/comments/{commentId}/like', name: 'app_forum_like_comment', methods: ['POST'])]
-    public function likeComment(int $postId, int $commentId, Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    #[Route('/{postId}/comments/{commentId}/like', name: 'app_forum_like_comment', methods: ['POST'], requirements: ['postId' => '\d+', 'commentId' => '\d+'])]
+    public function likeComment(int $postId, int $commentId, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $user = $this->getUserFromToken($request, $userRepository);
+        $user = $this->getUserFromToken($request);
         if (!$user) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
@@ -325,14 +322,16 @@ class ForumController extends AbstractController
             return $this->json(['error' => 'Comment not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Check if user already liked this comment
-        $existingLike = $em->getRepository(\App\Entity\PostCommentLike::class)->findOneBy([
+        if ($comment->getPost()?->getId() !== $postId) {
+            return $this->json(['error' => 'Comment not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $existingLike = $em->getRepository(PostCommentLike::class)->findOneBy([
             'user' => $user,
             'comment' => $comment
         ]);
 
         if ($existingLike) {
-            // Unlike - remove the like
             $em->remove($existingLike);
             $em->flush();
 
@@ -340,20 +339,19 @@ class ForumController extends AbstractController
                 'isLiked' => false,
                 'likesCount' => $comment->getLikesCount()
             ]);
-        } else {
-            // Like - create new like
-            $like = new \App\Entity\PostCommentLike();
-            $like->setUser($user);
-            $like->setComment($comment);
-
-            $em->persist($like);
-            $em->flush();
-
-            return $this->json([
-                'isLiked' => true,
-                'likesCount' => $comment->getLikesCount()
-            ]);
         }
+
+        $like = new PostCommentLike();
+        $like->setUser($user);
+        $like->setComment($comment);
+
+        $em->persist($like);
+        $em->flush();
+
+        return $this->json([
+            'isLiked' => true,
+            'likesCount' => $comment->getLikesCount()
+        ]);
     }
 
     private function serializePost(Post $post, ?\App\Entity\User $currentUser = null): array
@@ -363,17 +361,7 @@ class ForumController extends AbstractController
             'content' => $post->getContent(),
             'createdAt' => $post->getCreatedAt()->format('c'),
             'updatedAt' => $post->getUpdatedAt() ? $post->getUpdatedAt()->format('c') : null,
-            'user' => [
-                'id' => $post->getUser()->getId(),
-                'email' => $post->getUser()->getEmail(),
-                'isAdmin' => in_array('ROLE_ADMIN', $post->getUser()->getRoles(), true),
-                'owner' => $post->getUser()->getOwner() ? [
-                    'nom' => $post->getUser()->getOwner()->getNom(),
-                    'prenom' => $post->getUser()->getOwner()->getPrenom(),
-                    'fullName' => $post->getUser()->getOwner()->getFullName(),
-                    'profilePicture' => $post->getUser()->getOwner()->getPhotoPath(),
-                ] : null
-            ],
+            'user' => $this->serializePublicUser($post->getUser()),
             'images' => array_map(function (PostImage $image) {
                 return [
                     'id' => $image->getId(),
@@ -391,7 +379,6 @@ class ForumController extends AbstractController
             'likesCount' => $post->getLikesCount(),
             'isLiked' => $currentUser ? $post->isLikedByUser($currentUser) : false,
             'comments' => array_map(function (PostComment $comment) use ($currentUser) {
-                // Only include top-level comments (no parent)
                 return $comment->getParent() === null ? $this->serializeComment($comment, $currentUser) : null;
             }, array_filter($post->getComments()->toArray(), function (PostComment $comment) {
                 return $comment->getParent() === null;
@@ -399,7 +386,7 @@ class ForumController extends AbstractController
         ];
     }
 
-    private function serializeComment(PostComment $comment, ?\App\Entity\User $currentUser = null): array
+    private function serializeComment(PostComment $comment, ?User $currentUser = null, int $depth = 0): array
     {
         $parent = $comment->getParent();
         $parentData = null;
@@ -407,13 +394,7 @@ class ForumController extends AbstractController
         if ($parent) {
             $parentData = [
                 'id' => $parent->getId(),
-                'user' => [
-                    'id' => $parent->getUser()->getId(),
-                    'email' => $parent->getUser()->getEmail(),
-                    'nom' => $parent->getUser()->getOwner() ? $parent->getUser()->getOwner()->getNom() : 'Unknown',
-                    'prenom' => $parent->getUser()->getOwner() ? $parent->getUser()->getOwner()->getPrenom() : null,
-                    'fullName' => $parent->getUser()->getOwner() ? $parent->getUser()->getOwner()->getFullName() : 'Unknown',
-                ]
+                'user' => $this->serializePublicUser($parent->getUser())
             ];
         }
 
@@ -421,22 +402,58 @@ class ForumController extends AbstractController
             'id' => $comment->getId(),
             'content' => $comment->getContent(),
             'createdAt' => $comment->getCreatedAt()->format('c'),
-            'user' => [
-                'id' => $comment->getUser()->getId(),
-                'email' => $comment->getUser()->getEmail(),
-                'isAdmin' => in_array('ROLE_ADMIN', $comment->getUser()->getRoles(), true),
-                'owner' => $comment->getUser()->getOwner() ? [
-                    'nom' => $comment->getUser()->getOwner()->getNom(),
-                    'prenom' => $comment->getUser()->getOwner()->getPrenom(),
-                    'fullName' => $comment->getUser()->getOwner()->getFullName(),
-                ] : null
-            ],
+            'user' => $this->serializePublicUser($comment->getUser()),
             'parent' => $parentData,
             'likesCount' => $comment->getLikesCount(),
             'isLiked' => $currentUser ? $comment->isLikedByUser($currentUser) : false,
-            'replies' => array_map(function (PostComment $reply) use ($currentUser) {
-                return $this->serializeComment($reply, $currentUser);
+            'replies' => $depth >= 3 ? [] : array_map(function (PostComment $reply) use ($currentUser, $depth) {
+                return $this->serializeComment($reply, $currentUser, $depth + 1);
             }, $comment->getReplies()->toArray())
         ];
+    }
+
+    private function serializePublicUser(User $user): array
+    {
+        $owner = $user->getOwner();
+        $sitter = $user->getType() === 'sitter'
+            ? $this->em->getRepository(Sitter::class)->findOneBy(['user' => $user])
+            : null;
+        $name = $owner?->getFullName()
+            ?? ($sitter ? trim($sitter->getPrenom() . ' ' . $sitter->getNom()) : 'Membre Woofie');
+        $profilePicture = $owner?->getPhotoPath() ?? $sitter?->getPhotoPath();
+
+        return [
+            'id' => $user->getId(),
+            'name' => $name,
+            'profilePicture' => $profilePicture,
+            'isAdmin' => $user->isAdmin(),
+            'owner' => $owner ? [
+                'nom' => $owner->getNom(),
+                'prenom' => $owner->getPrenom(),
+                'fullName' => $owner->getFullName(),
+                'profilePicture' => $owner->getPhotoPath(),
+            ] : null,
+        ];
+    }
+
+    private function containsForbiddenKeyword(string $content, ForbiddenKeywordRepository $repository): bool
+    {
+        foreach ($repository->getAllKeywords() as $keyword) {
+            if ($keyword !== '' && mb_stripos($content, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function removeUploadedFiles(array $paths): void
+    {
+        $publicDir = (string) $this->getParameter('kernel.project_dir') . '/public';
+        foreach ($paths as $path) {
+            if (is_string($path) && str_starts_with($path, '/uploads/posts/')) {
+                @unlink($publicDir . $path);
+            }
+        }
     }
 }

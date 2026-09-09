@@ -7,20 +7,14 @@ export interface FileUploadProps {
   error?: string;
   helperText?: string;
   accept?: string;
-  maxSize?: number; // en bytes
+  maxSize?: number;
   onChange?: (file: File | null) => void;
   value?: File | null;
-  preview?: string; // URL de preview
+  preview?: string;
   required?: boolean;
   disabled?: boolean;
 }
 
-/**
- * Composant Upload de fichier (photo de profil)
- * - Preview de l'image
- * - Validation du type et de la taille
- * - Drag & drop support
- */
 export const FileUpload = memo<FileUploadProps>(function FileUpload({
   label = 'Photo de profil',
   error,
@@ -35,29 +29,31 @@ export const FileUpload = memo<FileUploadProps>(function FileUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(preview || null);
   const [isDragging, setIsDragging] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const handleFileChange = (file: File | null) => {
     if (!file) {
       setPreviewUrl(null);
+      setLocalError(null);
       onChange?.(null);
       return;
     }
 
-    // Validation de la taille
     if (file.size > maxSize) {
       const maxSizeMB = (maxSize / 1024 / 1024).toFixed(1);
-      alert(`Fichier trop volumineux. Taille maximum : ${maxSizeMB} MB`);
+      setLocalError(`Fichier trop volumineux. Taille maximum : ${maxSizeMB} MB`);
+      onChange?.(null);
       return;
     }
 
-    // Validation du type
     const allowedTypes = accept.split(',');
     if (!allowedTypes.includes(file.type)) {
-      alert(`Type de fichier non accepté. Formats acceptés : ${accept}`);
+      setLocalError(`Type de fichier non accepté. Formats acceptés : ${accept}`);
+      onChange?.(null);
       return;
     }
 
-    // Créer preview
+    setLocalError(null);
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewUrl(reader.result as string);
@@ -105,6 +101,7 @@ export const FileUpload = memo<FileUploadProps>(function FileUpload({
 
   const handleRemove = () => {
     setPreviewUrl(null);
+    setLocalError(null);
     onChange?.(null);
     if (inputRef.current) {
       inputRef.current.value = '';
@@ -126,7 +123,7 @@ export const FileUpload = memo<FileUploadProps>(function FileUpload({
         className={`
           relative border-2 border-dashed rounded-lg p-4 transition-all cursor-pointer
           ${isDragging ? 'border-[#D2691E] bg-[#D2691E]/10' : ''}
-          ${error ? 'border-red-500' : 'border-[#D2691E]/30 hover:border-[#D2691E]'}
+          ${error || localError ? 'border-red-500' : 'border-[#D2691E]/30 hover:border-[#D2691E]'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         `}
         onDragOver={handleDragOver}
@@ -178,12 +175,12 @@ export const FileUpload = memo<FileUploadProps>(function FileUpload({
         )}
       </div>
 
-      {helperText && !error && (
+      {helperText && !error && !localError && (
         <p className="mt-1 text-xs text-[#8B4513]/60">{helperText}</p>
       )}
 
-      {error && (
-        <p className="mt-1 text-xs text-red-500">{error}</p>
+      {(error || localError) && (
+        <p className="mt-1 text-xs text-red-500">{error || localError}</p>
       )}
     </div>
   );

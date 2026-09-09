@@ -19,7 +19,7 @@ class SiretValidator
      */
     public function isValidFormat(string $siret): bool
     {
-        return preg_match('/^\d{14}$/', $siret) === 1;
+        return preg_match('/^\d{14}$/', $this->normalize($siret)) === 1;
     }
 
     /**
@@ -27,17 +27,18 @@ class SiretValidator
      */
     public function validateLuhn(string $siret): bool
     {
+        $siret = $this->normalize($siret);
+
         if (!$this->isValidFormat($siret)) {
             return false;
         }
 
         $sum = 0;
 
-        for ($i = 0; $i < 14; $i++) {
+        for ($i = 13, $positionFromRight = 0; $i >= 0; $i--, $positionFromRight++) {
             $digit = (int) $siret[$i];
 
-            // Positions impaires (index pair car on compte de gauche à droite)
-            if ($i % 2 === 1) {
+            if ($positionFromRight % 2 === 1) {
                 $digit *= 2;
                 if ($digit > 9) {
                     $digit -= 9;
@@ -55,6 +56,8 @@ class SiretValidator
      */
     public function checkSiretExistence(string $siret): array
     {
+        $siret = $this->normalize($siret);
+
         if (!$this->isValidFormat($siret)) {
             return [
                 'exists' => false,
@@ -75,6 +78,7 @@ class SiretValidator
                     'Authorization' => 'Bearer ' . $this->inseeApiKey,
                     'Accept' => 'application/json',
                 ],
+                'timeout' => 5,
             ]);
 
             $statusCode = $response->getStatusCode();
@@ -94,19 +98,27 @@ class SiretValidator
             }
 
             $data = $response->toArray();
-            $companyName = $data['etablissement']['uniteLegale']['denominationUniteLegale']
-                ?? $data['etablissement']['uniteLegale']['prenomUsuelUniteLegale'] . ' ' . $data['etablissement']['uniteLegale']['nomUniteLegale']
-                ?? 'Entreprise trouvée';
+            $legalEntity = $data['etablissement']['uniteLegale'] ?? [];
+            $companyName = is_string($legalEntity['denominationUniteLegale'] ?? null)
+                ? trim($legalEntity['denominationUniteLegale'])
+                : trim(implode(' ', array_filter([
+                    is_string($legalEntity['prenomUsuelUniteLegale'] ?? null) ? $legalEntity['prenomUsuelUniteLegale'] : null,
+                    is_string($legalEntity['nomUniteLegale'] ?? null) ? $legalEntity['nomUniteLegale'] : null,
+                ])));
+
+            if ($companyName === '') {
+                $companyName = 'Entreprise trouvée';
+            }
 
             return [
                 'exists' => true,
-                'companyName' => trim($companyName)
+                'companyName' => $companyName
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable) {
             return [
                 'exists' => false,
-                'error' => 'Erreur lors de la vérification: ' . $e->getMessage()
+                'error' => 'Vérification Sirene temporairement indisponible'
             ];
         }
     }
@@ -116,6 +128,8 @@ class SiretValidator
      */
     public function validate(string $siret, bool $checkApi = true): array
     {
+        $siret = $this->normalize($siret);
+
         // 1. Vérifier le format
         if (!$this->isValidFormat($siret)) {
             return [
@@ -158,7 +172,7 @@ class SiretValidator
      */
     public function format(string $siret): string
     {
-        $cleaned = preg_replace('/\s/', '', $siret);
+        $cleaned = $this->normalize($siret);
 
         if (strlen($cleaned) !== 14) {
             return $siret;
@@ -168,5 +182,15 @@ class SiretValidator
             . substr($cleaned, 3, 3) . ' '
             . substr($cleaned, 6, 3) . ' '
             . substr($cleaned, 9, 5);
+    }
+
+    private function normalize(string $siret): string
+    {
+        $siret = trim($siret);
+        if ($siret === '' || preg_match('/^[\d\s.-]+$/', $siret) !== 1) {
+            return '';
+        }
+
+        return preg_replace('/[\s.-]+/', '', $siret) ?? '';
     }
 }

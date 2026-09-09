@@ -6,7 +6,6 @@ export default function AboutPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -29,9 +28,7 @@ export default function AboutPage() {
           </p>
         </motion.div>
 
-        {/* Story Timeline */}
         <div className="space-y-12">
-          {/* Chapter 1 */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -60,7 +57,6 @@ export default function AboutPage() {
             </div>
           </motion.div>
 
-          {/* Chapter 2 */}
           <motion.div
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -102,7 +98,6 @@ export default function AboutPage() {
             </div>
           </motion.div>
 
-          {/* Chapter 3 */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -139,7 +134,6 @@ export default function AboutPage() {
             </div>
           </motion.div>
 
-          {/* Chapter 4 */}
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -171,7 +165,6 @@ export default function AboutPage() {
           </motion.div>
         </div>
 
-        {/* Stats Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -200,7 +193,6 @@ export default function AboutPage() {
           ))}
         </motion.div>
 
-        {/* CTA Section */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

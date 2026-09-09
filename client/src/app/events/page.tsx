@@ -17,17 +17,14 @@ export default function EventsPage() {
     filteredUpcoming, filteredPast,
     loading,
     joinEvent, leaveEvent, createEvent, updateEvent, deleteEvent,
-    getMyEvents,
   } = useEvents(user?.id);
 
   const [showCreate, setShowCreate] = useState(false);
-  const myEvents = getMyEvents();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6] py-12">
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-8">
 
-        {/* En-tête */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -49,7 +46,6 @@ export default function EventsPage() {
           )}
         </motion.div>
 
-        {/* Filtres */}
         <div className="mb-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
           <EventFilters selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
           <ViewToggle viewMode={viewMode} onViewChange={setViewMode} />

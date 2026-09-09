@@ -92,7 +92,6 @@ export function Header() {
         <div className="mx-auto max-w-7xl px-4 py-3 lg:py-4">
           <div className="flex items-center justify-between gap-4">
 
-            {/* Logo */}
             <Link href="/">
               <div className="flex items-center gap-2 cursor-pointer shrink-0 transition-transform hover:scale-[1.02] active:scale-[0.98]">
                 <div className="relative h-12 w-12 lg:h-16 lg:w-16">
@@ -113,7 +112,6 @@ export function Header() {
               </div>
             </Link>
 
-            {/* Desktop nav — lg+ only */}
             {isAuthenticated && (
               <nav className="hidden flex-1 items-center justify-center gap-2 min-[1200px]:flex xl:gap-3">
                 {appNavItems.map((item) => {
@@ -144,7 +142,6 @@ export function Header() {
               </nav>
             )}
 
-            {/* Desktop right section — lg+ only */}
             <div className="hidden min-[1200px]:flex items-center gap-2 shrink-0">
               {isAuthenticated && <NotificationBell />}
               {!isAuthenticated ? (
@@ -187,7 +184,6 @@ export function Header() {
                     </svg>
                   </button>
 
-                  {/* Dropdown — CSS transition, pas de framer-motion */}
                   <div
                     className={`absolute right-0 mt-2 w-56 rounded-lg border border-gray-100 bg-white shadow-xl overflow-hidden transition-all duration-200 origin-top-right ${
                       isMenuOpen
@@ -225,7 +221,6 @@ export function Header() {
               )}
             </div>
 
-            {/* Hamburger / CTA — visible UNDER 1200px (mobile + tablet) */}
             <div className="flex items-center gap-2 min-[1200px]:hidden">
               {isAuthenticated && <NotificationBell />}
               {isAuthenticated ? (
@@ -262,7 +257,6 @@ export function Header() {
         </div>
       </div>
 
-      {/* Backdrop — CSS transition, pas de framer-motion */}
       <div
         onClick={() => setIsMobileNavOpen(false)}
         className={`fixed inset-0 z-40 bg-black transition-opacity duration-200 ${
@@ -270,7 +264,6 @@ export function Header() {
         }`}
       />
 
-      {/* Drawer mobile — CSS transition, pas de framer-motion */}
       <aside
         ref={mobileNavRef}
         className={`fixed inset-y-0 right-0 z-50 flex w-80 max-w-[90vw] flex-col justify-between bg-white shadow-xl transition-transform duration-[250ms] ease-out ${

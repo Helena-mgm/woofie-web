@@ -33,8 +33,8 @@ export const VALIDATION = {
     message: 'Email invalide',
   },
   password: {
-    minLength: 8,
-    message: 'Le mot de passe doit contenir au moins 8 caractères',
+    minLength: 12,
+    message: 'Le mot de passe doit contenir au moins 12 caractères',
   },
   // Format téléphone français (10 chiffres, commence par 0)
   phone: {

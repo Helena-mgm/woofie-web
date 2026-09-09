@@ -10,6 +10,28 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CorsSubscriber implements EventSubscriberInterface
 {
+    /** @var list<string> */
+    private array $allowedOrigins;
+
+    public function __construct(string $corsAllowOrigin)
+    {
+        $origins = array_values(array_filter(
+            array_map('trim', explode(',', $corsAllowOrigin)),
+            static fn(string $origin): bool => $origin !== ''
+        ));
+
+        foreach ($origins as $origin) {
+            $parts = parse_url($origin);
+            if ($origin === '*' || !is_array($parts) || !in_array($parts['scheme'] ?? null, ['http', 'https'], true)
+                || empty($parts['host']) || !in_array($parts['path'] ?? '', ['', '/'], true)
+                || isset($parts['query'], $parts['fragment'], $parts['user'], $parts['pass'])) {
+                throw new \RuntimeException('CORS_ALLOW_ORIGIN contains an invalid origin.');
+            }
+        }
+
+        $this->allowedOrigins = $origins;
+    }
+
     public static function getSubscribedEvents(): array
     {
         return [
@@ -25,13 +47,13 @@ class CorsSubscriber implements EventSubscriberInterface
         }
 
         $request = $event->getRequest();
+        if (!str_starts_with($request->getPathInfo(), '/api/')) {
+            return;
+        }
         
-        // Handle preflight OPTIONS request
         if ($request->getMethod() === 'OPTIONS') {
             $response = new Response();
-            $response->headers->set('Access-Control-Allow-Origin', '*');
-            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            $this->applyCorsHeaders($request->headers->get('Origin'), $response);
             $response->headers->set('Access-Control-Max-Age', '3600');
             $event->setResponse($response);
         }
@@ -43,9 +65,23 @@ class CorsSubscriber implements EventSubscriberInterface
             return;
         }
 
+        if (!str_starts_with($event->getRequest()->getPathInfo(), '/api/')) {
+            return;
+        }
+
         $response = $event->getResponse();
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        $this->applyCorsHeaders($event->getRequest()->headers->get('Origin'), $response);
+    }
+
+    private function applyCorsHeaders(?string $origin, Response $response): void
+    {
+        if ($origin && in_array($origin, $this->allowedOrigins, true)) {
+            $response->headers->set('Access-Control-Allow-Origin', $origin);
+            $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            $response->headers->set('Vary', 'Origin');
+        }
+
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
     }
 }

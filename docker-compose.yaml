@@ -2,23 +2,22 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_USER: symfony
-      POSTGRES_PASSWORD: symfony
-      POSTGRES_DB: woofie
+      POSTGRES_USER: ${POSTGRES_USER:?Copiez .env.example vers .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copiez .env.example vers .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Copiez .env.example vers .env}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U symfony"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # Adminer - Interface d'administration de BDD (supporte PostgreSQL + MySQL)
   adminer:
     image: adminer:latest
     container_name: woofie-adminer
     ports:
-      - "8080:8080"
+      - "127.0.0.1:${ADMINER_PORT:-8080}:8080"
     environment:
       ADMINER_DEFAULT_SERVER: db
       ADMINER_DESIGN: pepa-linha
@@ -26,15 +25,14 @@ services:
       - db
     restart: unless-stopped
 
-  # pgAdmin - Interface PostgreSQL (alternative plus complète)
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: woofie-pgadmin
     ports:
-      - "5050:80"
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@woofie.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Copiez .env.example vers .env}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Copiez .env.example vers .env}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     volumes:
       - pgadmin_data:/var/lib/pgadmin
@@ -46,34 +44,46 @@ services:
     build: ./server
     container_name: woofie-backend
     environment:
-      DEFAULT_URI: "http://localhost"
-      DATABASE_URL: "postgresql://symfony:symfony@db:5432/woofie?serverVersion=15&charset=utf8"
-      OLLAMA_API_URL: "http://ollama:11434"
+      APP_ENV: dev
+      DEFAULT_URI: http://localhost:8000
+      DATABASE_URL: ${DATABASE_URL:?Copiez .env.example vers .env}
+      OLLAMA_API_URL: ${OLLAMA_API_URL:?Copiez .env.example vers .env}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Copiez .env.example vers .env}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:?Copiez .env.example vers .env}
+      OLLAMA_MAX_RESPONSE_CHARS: ${OLLAMA_MAX_RESPONSE_CHARS:?Copiez .env.example vers .env}
       MESSENGER_TRANSPORT_DSN: "sync://"
+      APP_SECRET: ${APP_SECRET:?Copiez .env.example vers .env}
+      JWT_SECRET: ${JWT_SECRET:?Copiez .env.example vers .env}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:?Copiez .env.example vers .env}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:?Copiez .env.example vers .env}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:?Copiez .env.example vers .env}
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:?Copiez .env.example vers .env}
+      UPLOAD_MAX_PIXELS: ${UPLOAD_MAX_PIXELS:?Copiez .env.example vers .env}
+      INSEE_API_KEY: ${INSEE_API_KEY:-}
     volumes:
       - ./server:/var/www/html
     expose:
-      - "8080"
+      - "9000"
     depends_on:
       - db
     command: >
       bash -c "mkdir -p var public/uploads/owners public/uploads/dogs public/uploads/posts &&
                chown -R www-data:www-data var public/uploads || true &&
                chmod -R 0775 var public/uploads || true &&
-               php bin/console doctrine:migrations:migrate --no-interaction || true &&
-               php bin/console cache:clear --env=prod || true &&
+               php bin/console doctrine:migrations:migrate --no-interaction &&
+               php bin/console cache:clear &&
                php-fpm"
 
   nextjs:
     build:
       context: ./client
       args:
-        NEXT_PUBLIC_API_URL: "http://localhost:8000"
-        NEXT_PUBLIC_WS_ENABLED: "false"
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Copiez .env.example vers .env}
+        NEXT_PUBLIC_WS_ENABLED: ${NEXT_PUBLIC_WS_ENABLED:?Copiez .env.example vers .env}
     container_name: woofie-frontend
     environment:
-      NEXT_PUBLIC_API_URL: "http://localhost:8000"
-      NEXT_PUBLIC_WS_ENABLED: "false"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Copiez .env.example vers .env}
+      NEXT_PUBLIC_WS_ENABLED: ${NEXT_PUBLIC_WS_ENABLED:?Copiez .env.example vers .env}
     volumes:
       - ./client:/app
       - /app/node_modules
@@ -90,17 +100,23 @@ services:
       - ollama_data:/root/.ollama
     expose:
       - "11434"
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Copiez .env.example vers .env}
     restart: unless-stopped
     command: serve
 
   nginx:
-    image: nginx:latest
+    image: nginx:stable-alpine
     container_name: woofie-nginx
     ports:
       - "8000:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       - ./server/public/uploads:/var/www/html/public/uploads:ro
+    environment:
+      NGINX_UPLOAD_MAX_SIZE: ${NGINX_UPLOAD_MAX_SIZE:?Copiez .env.example vers .env}
+      NGINX_ENVSUBST_FILTER: ^(NGINX_UPLOAD_MAX_SIZE)$$
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
     depends_on:
       - nextjs
       - symfony

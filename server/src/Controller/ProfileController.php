@@ -8,8 +8,7 @@ use App\Repository\OwnerRepository;
 use App\Repository\SitterRepository;
 use App\Repository\DogRepository;
 use App\Repository\UserRepository;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+use App\Service\JwtService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,38 +17,21 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class ProfileController extends AbstractController
 {
-    private string $jwtKey;
-
-    public function __construct()
+    public function __construct(private JwtService $jwtService)
     {
-        $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
 
-    private function getUserFromToken(Request $request, UserRepository $userRepository): ?\App\Entity\User
+    private function getUserFromToken(Request $request): ?\App\Entity\User
     {
-        $authHeader = $request->headers->get('Authorization');
-        
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return null;
-        }
-
-        $token = substr($authHeader, 7);
-
-        try {
-            $decoded = JWT::decode($token, new Key($this->jwtKey, 'HS256'));
-            return $userRepository->find($decoded->sub);
-        } catch (\Exception $e) {
-            return null;
-        }
+        return $this->jwtService->getUserFromRequest($request);
     }
 
     #[Route('/api/profile/dogs', name: 'api_profile_dogs', methods: ['GET'])]
     public function getUserDogs(
         Request $request,
-        UserRepository $userRepository,
         OwnerRepository $ownerRepository
     ): JsonResponse {
-        $user = $this->getUserFromToken($request, $userRepository);
+        $user = $this->getUserFromToken($request);
         
         if (!$user) {
             return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
@@ -77,32 +59,24 @@ class ProfileController extends AbstractController
 
         return new JsonResponse($data);
     }
-    #[Route('/api/profile/{id}', name: 'api_profile', methods: ['GET'])]
+    #[Route('/api/profile/{id}', name: 'api_profile', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function getProfile(
         int $id,
+        UserRepository $userRepository,
         OwnerRepository $ownerRepo,
         SitterRepository $sitterRepo
     ): JsonResponse {
-        // Try to find by Owner ID first
-        $owner = $ownerRepo->find($id);
+        $user = $userRepository->find($id);
+        if (!$user) {
+            return new JsonResponse(['error' => 'Profile not found'], 404);
+        }
+
+        $owner = $ownerRepo->findOneBy(['user' => $user]);
         if ($owner) {
             return new JsonResponse($this->formatOwnerProfile($owner));
         }
 
-        // Try to find by Sitter ID
-        $sitter = $sitterRepo->find($id);
-        if ($sitter) {
-            return new JsonResponse($this->formatSitterProfile($sitter));
-        }
-
-        // Try to find by User ID (Owner)
-        $owner = $ownerRepo->findOneBy(['user' => $id]);
-        if ($owner) {
-            return new JsonResponse($this->formatOwnerProfile($owner));
-        }
-
-        // Try to find by User ID (Sitter)
-        $sitter = $sitterRepo->findOneBy(['user' => $id]);
+        $sitter = $sitterRepo->findOneBy(['user' => $user]);
         if ($sitter) {
             return new JsonResponse($this->formatSitterProfile($sitter));
         }
@@ -114,7 +88,6 @@ class ProfileController extends AbstractController
     {
         $dogs = [];
         foreach ($owner->getDogs() as $dog) {
-            // Get all photos for the dog
             $photos = [];
             foreach ($dog->getPhotos() as $dogPhoto) {
                 $photos[] = $dogPhoto->getPhotoPath();
@@ -128,18 +101,17 @@ class ProfileController extends AbstractController
                 'dateNaissance' => $dog->getDateNaissance()?->format('Y-m-d'),
                 'description' => $dog->getDescription(),
                 'photoPath' => $dog->getPhotoPath(),
-                'photos' => $photos, // Gallery of all photos
+                'photos' => $photos,
             ];
         }
 
         return [
-            'id' => $owner->getId(),
+            'id' => $owner->getUser()->getId(),
             'type' => 'owner',
             'nom' => $owner->getNom(),
+            'prenom' => $owner->getPrenom(),
             'ville' => $owner->getVille(),
-            'telephone' => $owner->getTelephone(),
             'photoPath' => $owner->getPhotoPath(),
-            'email' => $owner->getUser()->getEmail(),
             'dogs' => $dogs,
             'stats' => [
                 'totalDogs' => count($dogs),
@@ -151,15 +123,12 @@ class ProfileController extends AbstractController
     private function formatSitterProfile(Sitter $sitter): array
     {
         return [
-            'id' => $sitter->getId(),
+            'id' => $sitter->getUser()->getId(),
             'type' => 'sitter',
             'nom' => $sitter->getNom(),
             'prenom' => $sitter->getPrenom(),
             'ville' => $sitter->getVille(),
-            'telephone' => $sitter->getTelephone(),
             'photoPath' => $sitter->getPhotoPath(),
-            'email' => $sitter->getUser()->getEmail(),
-            'siret' => $sitter->getSiret(),
             'isVerified' => $sitter->getIsVerified(),
             'bio' => $sitter->getBio(),
             'services' => $sitter->getServices(),
@@ -173,7 +142,7 @@ class ProfileController extends AbstractController
         ];
     }
 
-    #[Route('/api/dog/{id}', name: 'api_dog', methods: ['GET'])]
+    #[Route('/api/dog/{id}', name: 'api_dog', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function getDog(int $id, DogRepository $dogRepo): JsonResponse
     {
         $dog = $dogRepo->find($id);
@@ -182,7 +151,6 @@ class ProfileController extends AbstractController
             return new JsonResponse(['error' => 'Dog not found'], 404);
         }
 
-        // Get all photos for the dog
         $photos = [];
         foreach ($dog->getPhotos() as $dogPhoto) {
             $photos[] = $dogPhoto->getPhotoPath();
@@ -196,9 +164,9 @@ class ProfileController extends AbstractController
             'dateNaissance' => $dog->getDateNaissance()?->format('Y-m-d'),
             'description' => $dog->getDescription(),
             'photoPath' => $dog->getPhotoPath(),
-            'photos' => $photos, // Gallery of all photos
+            'photos' => $photos,
             'owner' => [
-                'id' => $dog->getOwner()->getId(),
+                'id' => $dog->getOwner()->getUser()->getId(),
                 'nom' => $dog->getOwner()->getNom(),
                 'prenom' => $dog->getOwner()->getPrenom(),
                 'fullName' => $dog->getOwner()->getFullName(),

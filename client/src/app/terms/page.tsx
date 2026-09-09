@@ -49,7 +49,6 @@ export default function TermsPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -72,7 +71,6 @@ export default function TermsPage() {
           </p>
         </motion.div>
 
-        {/* Introduction */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -86,7 +84,6 @@ export default function TermsPage() {
           </p>
         </motion.div>
 
-        {/* Sections */}
         <div className="space-y-6">
           {sections.map((section, index) => (
             <motion.div
@@ -107,7 +104,6 @@ export default function TermsPage() {
           ))}
         </div>
 
-        {/* Important Notice */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -130,7 +126,6 @@ export default function TermsPage() {
           </div>
         </motion.div>
 
-        {/* Contact CTA */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

@@ -150,7 +150,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
 
-            {/* Titre */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Titre *</label>
               <input
@@ -162,7 +161,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
               />
             </div>
 
-            {/* Description */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Description *</label>
               <textarea
@@ -175,7 +173,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
               />
             </div>
 
-            {/* Date + Heure */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Date *</label>
@@ -198,14 +195,12 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
               </div>
             </div>
 
-            {/* ── LIEU ─────────────────────────────────────────────── */}
             <div className="space-y-2 border border-gray-100 rounded-xl p-4 bg-gray-50/60">
               <p className="text-sm font-semibold text-gray-700 mb-2">📍 Lieu *</p>
 
-              {/* Nom libre */}
               <div>
                 <label className="block text-xs text-gray-500 mb-1">
-                  Nom affiché sur l'événement <span className="text-red-400">*</span>
+                  Nom affiché sur l&apos;événement <span className="text-red-400">*</span>
                 </label>
                 <input
                   required
@@ -214,10 +209,9 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D2691E]/50"
                   placeholder="Ex : Parc Monceau · Chez Julie · Salle municipale de Lyon"
                 />
-                <p className="text-xs text-gray-400 mt-1">Tape ce que tu veux — ce texte apparaîtra sur la carte d'événement.</p>
+                <p className="text-xs text-gray-400 mt-1">Tape ce que tu veux — ce texte apparaîtra sur la carte d&apos;événement.</p>
               </div>
 
-              {/* Géolocalisation (optionnel) */}
               <div className="pt-1">
                 <label className="block text-xs text-gray-500 mb-1">
                   Épingler sur la carte <span className="text-gray-400">(optionnel)</span>
@@ -289,7 +283,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
               </div>
             </div>
 
-            {/* Catégorie + Places max */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Catégorie *</label>
@@ -313,7 +306,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
               </div>
             </div>
 
-            {/* Icône */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Icône</label>
               <div className="flex flex-wrap gap-2">
@@ -326,7 +318,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
               </div>
             </div>
 
-            {/* Options */}
             <div className="flex flex-col gap-2.5 p-4 bg-gray-50 rounded-xl">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Options</p>
               <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
@@ -367,4 +358,3 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
     </div>
   );
 }
-

@@ -29,9 +29,7 @@ export function Footer() {
   return (
     <footer className="bg-gradient-to-b from-[#8B4513] to-[#654321] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-        {/* Main Footer Content */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-          {/* Logo & Description */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="inline-block mb-4">
               <div className="flex items-center gap-3">
@@ -71,7 +69,6 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Company Links */}
           <div>
             <h3 className="font-bold text-lg mb-4">Entreprise</h3>
             <ul className="space-y-2">
@@ -88,7 +85,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Support Links */}
           <div>
             <h3 className="font-bold text-lg mb-4">Aide</h3>
             <ul className="space-y-2">
@@ -105,7 +101,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Legal Links */}
           <div>
             <h3 className="font-bold text-lg mb-4">Légal</h3>
             <ul className="space-y-2">
@@ -123,7 +118,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Newsletter Section */}
         <div className="border-t border-white/20 pt-8 mb-8">
           <div className="max-w-md mx-auto text-center">
             <h3 className="font-bold text-xl mb-2">
@@ -147,7 +141,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
         <div className="border-t border-white/20 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-300">
             <p>

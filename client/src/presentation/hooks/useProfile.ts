@@ -8,9 +8,9 @@ interface ProfileData {
   nom: string;
   prenom?: string;
   ville: string;
-  telephone: string;
+  telephone?: string;
   photoPath: string | null;
-  email: string;
+  email?: string;
   dogs?: Dog[];
   siret?: string;
   isVerified?: boolean;
@@ -27,13 +27,9 @@ interface ProfileData {
 }
 
 const profileCache = new Map<number, { data: ProfileData; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
 const profileDebugEnabled = process.env.NEXT_PUBLIC_PROFILE_DEBUG === 'true';
 
-/**
- * Hook pour charger un profil utilisateur avec cache
- * Rule: < 80 lines, optimized with caching
- */
 export function useProfile(userId: number | null) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +45,6 @@ export function useProfile(userId: number | null) {
       setLoading(true);
       setError(null);
 
-      // Check cache first
       const cached = profileCache.get(userId);
       const now = Date.now();
       

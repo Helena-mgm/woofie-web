@@ -4,11 +4,6 @@ import { motion } from 'framer-motion';
 import type { Dog } from '@/types';
 import { getImageUrl } from '@/infrastructure/config/constants';
 
-/**
- * Simple Dog List - Instagram Grid Style
- * Rule: < 50 lines, clean & simple
- */
-
 interface DogListProps {
   dogs: Dog[];
 }

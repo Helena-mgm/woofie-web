@@ -5,10 +5,8 @@ namespace App\Controller;
 use App\Entity\Notification;
 use App\Entity\User;
 use App\Repository\NotificationRepository;
-use App\Repository\UserRepository;
+use App\Service\JwtService;
 use Doctrine\ORM\EntityManagerInterface;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,32 +15,19 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/notifications')]
 class NotificationController extends AbstractController
 {
-    private string $jwtKey;
-
     public function __construct(
         private EntityManagerInterface  $em,
         private NotificationRepository  $notifRepo,
-        private UserRepository          $userRepo,
+        private JwtService              $jwtService,
     ) {
-        $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
 
-    // ── Auth helper ──────────────────────────────────────────────────────────
 
     private function getUserFromToken(Request $request): ?User
     {
-        $header = $request->headers->get('Authorization');
-        if (!$header || !str_starts_with($header, 'Bearer ')) return null;
-
-        try {
-            $decoded = JWT::decode(substr($header, 7), new Key($this->jwtKey, 'HS256'));
-            return isset($decoded->sub) ? $this->userRepo->find((int) $decoded->sub) : null;
-        } catch (\Exception) {
-            return null;
-        }
+        return $this->jwtService->getUserFromRequest($request);
     }
 
-    // ── Endpoints ────────────────────────────────────────────────────────────
 
     /** GET /api/notifications — liste des notifs de l'utilisateur connecté */
     #[Route('', methods: ['GET'])]

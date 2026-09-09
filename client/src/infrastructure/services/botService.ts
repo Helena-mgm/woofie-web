@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiPost } from '@/shared/lib/api';
 
 export interface BotResponse {
   id: number;
@@ -9,7 +9,7 @@ export interface BotResponse {
 }
 
 export const getBotConversation = async (): Promise<{ id: number; name: string; type: string } | null> => {
-  const response = await apiGet('/api/bot/conversation');
+  const response = await apiPost('/api/bot/conversation', {});
   if (response.ok && response.data) {
     return response.data as { id: number; name: string; type: string };
   }
@@ -24,7 +24,6 @@ export const sendBotMessage = async (
     ? { conversationId, message }
     : { message };
 
-  // Ollama can take up to 2 minutes to respond — use 120s timeout
   const response = await apiPost('/api/bot/chat', payload, 120_000);
 
   if (response.ok && response.data) {

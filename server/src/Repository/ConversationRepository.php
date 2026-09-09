@@ -40,6 +40,20 @@ class ConversationRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
+    public function findBotConversationForUser(User $user): ?Conversation
+    {
+        return $this->createQueryBuilder('c')
+            ->innerJoin('c.participants', 'p')
+            ->where('c.type = :type')
+            ->andWhere('p = :user')
+            ->setParameter('type', 'bot')
+            ->setParameter('user', $user)
+            ->orderBy('c.createdAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function getUnreadCount(Conversation $conversation, User $user): int
     {
         return $this->getEntityManager()
@@ -47,7 +61,7 @@ class ConversationRepository extends ServiceEntityRepository
                 SELECT COUNT(m)
                 FROM App\Entity\Message m
                 WHERE m.conversation = :conversation
-                AND m.sender != :user
+                AND (m.sender IS NULL OR m.sender != :user)
                 AND m.isRead = false
             ')
             ->setParameter('conversation', $conversation)
