@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import { APP_CONFIG } from '@/infrastructure/config/constants';
 
 interface FAQItem {
   id: number;
@@ -21,7 +22,7 @@ const faqData: FAQItem[] = [
     id: 2,
     category: 'Général',
     question: 'Est-ce que Woofie est gratuit ?',
-    answer: 'Oui ! L\'inscription et les fonctionnalités de base sont entièrement gratuites. Nous proposons également un abonnement premium avec des fonctionnalités supplémentaires pour ceux qui souhaitent aller plus loin.',
+    answer: 'Oui, l’inscription et les fonctionnalités actuellement disponibles sont gratuites.',
   },
   {
     id: 3,
@@ -33,7 +34,7 @@ const faqData: FAQItem[] = [
     id: 4,
     category: 'Compte',
     question: 'Puis-je ajouter plusieurs chiens à mon profil ?',
-    answer: 'Absolument ! Vous pouvez ajouter autant de chiens que vous le souhaitez. Chaque chien aura son propre profil avec photos, informations et historique.',
+    answer: 'Oui, vous pouvez enregistrer jusqu’à 10 chiens. Chaque chien dispose de son propre profil et de ses photos.',
   },
   {
     id: 5,
@@ -45,43 +46,43 @@ const faqData: FAQItem[] = [
     id: 6,
     category: 'Fonctionnalités',
     question: 'Comment fonctionne la carte interactive ?',
-    answer: 'La carte affiche en temps réel les propriétaires de chiens proches de vous, les parcs canins, les événements à venir, et les dog-sitters disponibles. Vous pouvez filtrer par catégorie pour trouver exactement ce que vous cherchez.',
+    answer: 'La carte permet de rechercher des lieux adaptés aux chiens et d’afficher les événements géolocalisés. Des filtres facilitent la recherche par catégorie.',
   },
   {
     id: 7,
     category: 'Dog-sitting',
     question: 'Comment devenir dog-sitter sur Woofie ?',
-    answer: 'Allez dans les paramètres de votre compte, activez le mode "Dog-sitter", remplissez votre profil avec vos disponibilités, tarifs et expériences. Vous devrez également fournir des références pour rassurer les propriétaires.',
+    answer: 'Choisissez le profil Dog-sitter lors de l’inscription, puis renseignez votre SIRET, vos services, vos disponibilités, vos tarifs et votre expérience.',
   },
   {
     id: 8,
     category: 'Dog-sitting',
     question: 'Comment sont vérifiés les dog-sitters ?',
-    answer: 'Tous les dog-sitters passent par un processus de vérification : vérification d\'identité, références, et évaluation de leur expérience avec les chiens. De plus, les avis de la communauté permettent de garantir la qualité du service.',
+    answer: 'Le SIRET est contrôlé à l’inscription, puis un administrateur doit valider le profil avant sa publication dans l’annuaire.',
   },
   {
     id: 9,
     category: 'Sécurité',
     question: 'Mes données personnelles sont-elles protégées ?',
-    answer: 'Absolument. Nous prenons la sécurité très au sérieux. Vos données sont cryptées, nous ne partageons jamais vos informations avec des tiers, et vous contrôlez ce qui est visible publiquement sur votre profil.',
+    answer: 'Les mots de passe sont hachés, l’accès aux données privées est contrôlé et vous pouvez exporter ou supprimer vos données depuis les paramètres du compte.',
   },
   {
     id: 10,
     category: 'Sécurité',
     question: 'Comment signaler un comportement inapproprié ?',
-    answer: 'Sur chaque profil et publication, vous trouverez une option "Signaler". Notre équipe de modération examine tous les signalements dans les 24h et prend les mesures nécessaires.',
+    answer: `Contactez ${APP_CONFIG.supportEmail} en indiquant le contenu concerné et les éléments utiles à son examen.`,
   },
   {
     id: 11,
     category: 'Technique',
     question: 'L\'application est-elle disponible sur mobile ?',
-    answer: 'Oui ! Woofie est une Progressive Web App (PWA), ce qui signifie que vous pouvez l\'installer sur votre téléphone comme une application native, sur iOS et Android.',
+    answer: 'Oui, le site est conçu pour fonctionner sur mobile, tablette et ordinateur depuis un navigateur récent.',
   },
   {
     id: 12,
     category: 'Technique',
     question: 'Que faire si je rencontre un problème technique ?',
-    answer: 'Contactez notre support via la page "Support" ou envoyez un email à support@woofie.com. Notre équipe répond généralement en moins de 24h.',
+    answer: `Contactez notre support via la page "Support" ou envoyez un email à ${APP_CONFIG.supportEmail}. Notre équipe répond généralement en moins de 24h.`,
   },
 ];
 
@@ -98,7 +99,6 @@ export default function FAQPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -121,7 +121,6 @@ export default function FAQPage() {
           </p>
         </motion.div>
 
-        {/* Category Filters */}
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {categories.map((category) => (
             <motion.button
@@ -140,7 +139,6 @@ export default function FAQPage() {
           ))}
         </div>
 
-        {/* FAQ Accordion */}
         <div className="space-y-4">
           {filteredFAQ.map((item, index) => (
             <motion.div
@@ -191,7 +189,6 @@ export default function FAQPage() {
           ))}
         </div>
 
-        {/* Still have questions? */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}

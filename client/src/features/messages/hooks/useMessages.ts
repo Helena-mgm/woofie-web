@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Conversation, Message, WSMessage } from "@/shared/types/chat";
-import { apiDelete, apiGet, apiPatch, apiPost, tokenManager } from "@/shared/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/shared/lib/api";
 import { chatWS } from "@/infrastructure/services/chatWebSocket";
 import { sendBotMessage } from "@/infrastructure/services/botService";
 
@@ -21,6 +21,7 @@ const initialState: MessagesState = {
 };
 
 const DRAFT_BOT_CONVERSATION_ID = -1;
+const messagesDebugEnabled = process.env.NEXT_PUBLIC_MESSAGES_DEBUG === "true";
 
 type EditMessageResponse = {
   message: {
@@ -55,11 +56,12 @@ export function useMessages(userId?: number) {
       const response = await apiGet("/api/conversations");
       const data = response.ok && Array.isArray(response.data) ? (response.data as Conversation[]) : [];
       setState((prev) => ({ ...prev, conversations: data, loading: false }));
-      
-  // Keep draft selected by default; only fallback if really no active id
-  setActiveConversationId((prev) => prev ?? DRAFT_BOT_CONVERSATION_ID);
+
+      setActiveConversationId((prev) => prev ?? DRAFT_BOT_CONVERSATION_ID);
     } catch (error) {
-      console.error("[messages] load conversations failed", error);
+      if (messagesDebugEnabled) {
+        console.error("[messages] load conversations failed", error);
+      }
       setState((prev) => ({ ...prev, loading: false }));
     }
   }, [userId]);
@@ -69,16 +71,12 @@ export function useMessages(userId?: number) {
 
     void loadConversations();
 
-    const token = tokenManager.get();
-    if (token) {
-      chatWS.connect(token);
-    }
+    chatWS.connect();
 
     const unsubscribe = chatWS.subscribe((payload: WSMessage) => {
       if (payload.type === "message") {
         setState((prev) => {
           const existing = prev.messages[payload.data.conversationId] ?? [];
-          // Dédoublonnage : évite les doublons entre WS et polling
           if (existing.some((m) => m.id === payload.data.id)) return prev;
           return {
             ...prev,
@@ -106,14 +104,12 @@ export function useMessages(userId?: number) {
     }));
   }, []);
 
-  // Polling léger : fusionne les nouveaux messages sans écraser les messages en cours d'envoi
   const pollMessages = useCallback(async (conversationId: number) => {
     const response = await apiGet(`/api/conversations/${conversationId}/messages?limit=50`);
     if (!response.ok || !Array.isArray(response.data)) return;
     const incoming = response.data as Message[];
     setState((prev) => {
       const current = prev.messages[conversationId] ?? [];
-      // Garde les messages temporaires (id < 0) en attente de confirmation
       const pending = current.filter((m) => m.id < 0);
       return {
         ...prev,
@@ -122,11 +118,9 @@ export function useMessages(userId?: number) {
     });
   }, []);
 
-  // Ref pour éviter les captures obsolètes dans l'intervalle de polling
   const activeIdRef = useRef(activeConversationId);
   useEffect(() => { activeIdRef.current = activeConversationId; }, [activeConversationId]);
 
-  // Polling toutes les 3s sur la conversation active (le WS backend n'émet pas encore)
   useEffect(() => {
     if (!activeConversationId || activeConversationId === DRAFT_BOT_CONVERSATION_ID) return;
     const timer = setInterval(() => {
@@ -137,8 +131,6 @@ export function useMessages(userId?: number) {
     return () => clearInterval(timer);
   }, [activeConversationId, pollMessages]);
 
-  // Defensive: whenever the active conversation changes to a real one,
-  // make sure its messages are loaded (covers edge cases like last conv after deletion).
   useEffect(() => {
     if (
       activeConversationId &&
@@ -158,8 +150,7 @@ export function useMessages(userId?: number) {
       }
 
       if (isBot) {
-        // Show user message immediately (optimistic)
-        const tempId = Date.now();
+        const tempId = -Date.now();
         const temp: Message = {
           id: tempId,
           conversationId,
@@ -178,19 +169,41 @@ export function useMessages(userId?: number) {
           botTyping: true,
         }));
         
-        const botReply = await sendBotMessage(
-          conversationId === DRAFT_BOT_CONVERSATION_ID ? null : conversationId,
-          content
-        );
+        let botReply;
+        try {
+          botReply = await sendBotMessage(
+            conversationId === DRAFT_BOT_CONVERSATION_ID ? null : conversationId,
+            content
+          );
+        } catch (error) {
+          if (messagesDebugEnabled) {
+            console.error("[messages] bot send failed", error);
+          }
+          setState((prev) => ({
+            ...prev,
+            messages: {
+              ...prev.messages,
+              [conversationId]: (prev.messages[conversationId] ?? []).filter((m) => m.id !== tempId),
+            },
+            botTyping: false,
+          }));
+          return;
+        }
 
         if (!botReply) {
-          setState((prev) => ({ ...prev, botTyping: false }));
+          setState((prev) => ({
+            ...prev,
+            messages: {
+              ...prev.messages,
+              [conversationId]: (prev.messages[conversationId] ?? []).filter((m) => m.id !== tempId),
+            },
+            botTyping: false,
+          }));
           return;
         }
 
         const actualConvId = botReply.conversationId || conversationId;
 
-        // Keep UI responsive immediately, then hard-sync from backend for consistency.
         setState((prev) => {
           const existing = (prev.messages[conversationId] ?? []).filter((m) => m.id !== tempId);
           const userMsg: Message = { ...temp, id: tempId + 1, conversationId: actualConvId };
@@ -226,13 +239,10 @@ export function useMessages(userId?: number) {
           setActiveConversationId(actualConvId);
         }
 
-        // Ensure final state comes from backend (prevents stale UI until manual refresh)
         await loadMessages(actualConvId);
         return;
       }
 
-      // ── Conversation normale (non-bot) ──────────────────────────────────
-      // 1. Affichage optimiste immédiat avec un ID temporaire négatif
       const tempId = -Date.now();
       const tempMessage: Message = {
         id: tempId,
@@ -252,14 +262,29 @@ export function useMessages(userId?: number) {
         },
       }));
 
-      // 2. Envoi réel au serveur
-      const res = await apiPost(`/api/conversations/${conversationId}/messages`, {
-        content,
-        type: "text",
-      });
+      let res;
+      try {
+        res = await apiPost(`/api/conversations/${conversationId}/messages`, {
+          content,
+          type: "text",
+        });
+      } catch (error) {
+        if (messagesDebugEnabled) {
+          console.error("[messages] send failed", error);
+        }
+        setState((prev) => ({
+          ...prev,
+          messages: {
+            ...prev.messages,
+            [conversationId]: (prev.messages[conversationId] ?? []).filter(
+              (m) => m.id !== tempId
+            ),
+          },
+        }));
+        return;
+      }
 
       if (res.ok && res.data) {
-        // 3a. Remplace le message temporaire par le vrai (avec l'ID serveur)
         const { id: realId, createdAt } = res.data as { id: number; createdAt: string };
         setState((prev) => ({
           ...prev,
@@ -273,7 +298,6 @@ export function useMessages(userId?: number) {
           },
         }));
       } else {
-        // 3b. Rollback si erreur serveur
         setState((prev) => ({
           ...prev,
           messages: {
@@ -301,7 +325,6 @@ export function useMessages(userId?: number) {
     async (conversationId: number, messageId: number, content: string) => {
       setState((prev) => ({ ...prev, botTyping: true }));
 
-      // Ollama can take up to 2 min to regenerate — use a 120s timeout
       const response = await apiPatch(
         `/api/conversations/${conversationId}/messages/${messageId}`,
         { content },
@@ -363,7 +386,6 @@ export function useMessages(userId?: number) {
         };
       });
 
-      // Hard refresh from backend so regenerated sequence appears instantly without page refresh
       await loadMessages(conversationId);
 
       return true;

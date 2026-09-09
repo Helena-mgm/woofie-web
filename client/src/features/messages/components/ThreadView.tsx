@@ -161,7 +161,6 @@ export function ThreadView({
 
   return (
     <section className="relative flex flex-1 min-w-0 flex-col bg-[#FAF6F1]">
-      {/* Header */}
       <div className="flex items-center gap-2 border-b border-[#EDE0D0] bg-white px-3 py-3.5 sm:gap-3 sm:px-6">
         {onBack && (
           <button
@@ -180,7 +179,6 @@ export function ThreadView({
           <p className="truncate text-sm font-semibold text-[#3E2A1B]">{headerTitle}</p>
           <p className="text-xs text-[#A07050]">{headerSubtitle}</p>
         </div>
-        {/* Participants button for groups */}
         {isGroup && (
           <button
             type="button"
@@ -204,7 +202,6 @@ export function ThreadView({
         )}
       </div>
 
-      {/* Messages area */}
       <div ref={scrollRef} className="flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5">
         {loading && messages.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-sm text-[#A0522D]">Chargement…</div>
@@ -238,7 +235,6 @@ export function ThreadView({
 
             return (
               <div key={message.id} className="space-y-0.5">
-                {/* Sender name in group chats */}
                 {isGroup && !isOwn && senderParticipant && (
                   <div className="flex items-center gap-1.5 ml-3 mb-0.5">
                     <span className="text-xs font-semibold text-[#7A4020]">{senderParticipant.name}</span>
@@ -320,12 +316,10 @@ export function ThreadView({
         )}
       </div>
 
-      {/* Composer */}
       <div className="border-t border-[#EDE0D0] bg-white px-3 py-2.5 sm:px-4 sm:py-3">
         <Composer onSend={onSend} />
       </div>
 
-      {/* Participants drawer */}
       {showParticipants && isGroup && (
         <ParticipantsDrawer
           conversation={conversation}
@@ -334,7 +328,6 @@ export function ThreadView({
         />
       )}
 
-      {/* Confirm delete modal */}
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">

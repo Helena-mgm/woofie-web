@@ -54,7 +54,7 @@ jobs:
       - name: ⚙️ Configure test environment
         working-directory: server
         run: |
-          printf 'APP_ENV=test\nAPP_SECRET=ci_secret\nDATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie?serverVersion=15&charset=utf8"\nJWT_SECRET=ci_jwt_secret\nMESSENGER_TRANSPORT_DSN=sync://\nOLLAMA_API_URL=http://localhost:11434\nDEFAULT_URI=http://localhost/\n' > .env
+          printf 'APP_ENV=test\nAPP_SECRET=ci_application_secret_for_tests\nDATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie?serverVersion=15&charset=utf8"\nJWT_SECRET=ci_jwt_secret_with_more_than_thirty_two_characters\nJWT_TTL_SECONDS=3600\nAUTH_COOKIE_SECURE=0\nCORS_ALLOW_ORIGIN=http://localhost:3000\nUPLOAD_MAX_BYTES=5242880\nUPLOAD_MAX_PIXELS=20000000\nMESSENGER_TRANSPORT_DSN=sync://\nOLLAMA_API_URL=http://localhost:11434\nOLLAMA_MODEL=llama3.2\nOLLAMA_TIMEOUT_SECONDS=60\nOLLAMA_MAX_RESPONSE_CHARS=10000\nDEFAULT_URI=http://localhost/\n' > .env
           printf 'DATABASE_URL="postgresql://symfony:symfony@127.0.0.1:5432/woofie_test?serverVersion=15&charset=utf8"\n' > .env.test.local
 
       - name: 📦 Install Composer dependencies
@@ -93,7 +93,7 @@ jobs:
       - name: 🟢 Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: client/package-lock.json
 
@@ -120,7 +120,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐳 Validate docker-compose syntax
-        run: docker compose config --quiet
+        run: docker compose --env-file .env.example config --quiet
 
       - name: 🔨 Build backend image
         run: docker build -t woofie-backend ./server

@@ -73,7 +73,6 @@ export default function PressPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -96,7 +95,6 @@ export default function PressPage() {
           </p>
         </motion.div>
 
-        {/* Press Kit Download */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -118,7 +116,6 @@ export default function PressPage() {
           </motion.button>
         </motion.div>
 
-        {/* Articles Grid */}
         <div className="space-y-6">
           {pressArticles.map((article, index) => (
             <motion.div
@@ -131,12 +128,10 @@ export default function PressPage() {
               className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all overflow-hidden"
             >
               <div className="md:flex">
-                {/* Logo Section */}
                 <div className="md:w-1/4 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center p-8">
                   <div className="text-6xl">{article.logo}</div>
                 </div>
 
-                {/* Content Section */}
                 <div className="md:w-3/4 p-6 md:p-8">
                   <div className="flex items-center gap-3 mb-3">
                     <span className="px-3 py-1 bg-[#FFE4B5] text-[#8B4513] rounded-full text-sm font-semibold">
@@ -164,7 +159,6 @@ export default function PressPage() {
           ))}
         </div>
 
-        {/* Stats Section */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -198,7 +192,6 @@ export default function PressPage() {
           </div>
         </motion.div>
 
-        {/* Contact Press Section */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

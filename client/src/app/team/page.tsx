@@ -26,7 +26,6 @@ export default function TeamPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -49,7 +48,6 @@ export default function TeamPage() {
           </p>
         </motion.div>
 
-        {/* Team Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {teamMembers.map((member, index) => (
             <motion.div
@@ -61,7 +59,6 @@ export default function TeamPage() {
               whileHover={{ y: -10, scale: 1.02 }}
               className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all"
             >
-              {/* Card Header with Gradient */}
               <div className="bg-gradient-to-br from-[#D2691E] to-[#8B4513] p-8 text-center relative">
                 <motion.div
                   whileHover={{ rotate: 360 }}
@@ -75,7 +72,6 @@ export default function TeamPage() {
                 </div>
               </div>
 
-              {/* Card Body */}
               <div className="p-6">
                 <h3 className="text-2xl font-bold text-[#8B4513] mb-2">
                   {member.name}
@@ -99,7 +95,6 @@ export default function TeamPage() {
           ))}
         </div>
 
-        {/* Values Section */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -148,7 +143,6 @@ export default function TeamPage() {
           </div>
         </motion.div>
 
-        {/* Join Us Section */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

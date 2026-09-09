@@ -17,7 +17,7 @@ class Owner
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\OneToOne(targetEntity: User::class, cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(targetEntity: User::class, inversedBy: 'owner', cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
@@ -74,6 +74,9 @@ class Owner
     public function setUser(User $user): self
     {
         $this->user = $user;
+        if ($user->getOwner() !== $this) {
+            $user->setOwner($this);
+        }
         return $this;
     }
 

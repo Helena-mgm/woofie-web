@@ -1,9 +1,5 @@
 import { DogSitter } from '@/shared/types/forum';
 
-/**
- * Mock data for dog-sitting services
- * Separated from UI for clean architecture
- */
 export const mockDogSitters: DogSitter[] = [
   {
     id: 1,

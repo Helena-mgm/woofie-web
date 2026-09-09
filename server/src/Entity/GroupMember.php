@@ -23,7 +23,7 @@ class GroupMember
     private User $user;
 
     #[ORM\Column(type: 'string', length: 20)]
-    private string $role = 'member'; // owner, admin, member
+    private string $role = 'member';
 
     #[ORM\Column(type: 'boolean')]
     private bool $canInvite = false;
@@ -36,7 +36,6 @@ class GroupMember
         $this->joinedAt = new \DateTime();
     }
 
-    // Getters & Setters
     public function getId(): ?int { return $this->id; }
     public function getGroup(): Group { return $this->group; }
     public function setGroup(Group $group): self { $this->group = $group; return $this; }

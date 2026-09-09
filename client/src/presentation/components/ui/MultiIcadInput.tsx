@@ -88,7 +88,6 @@ export const MultiIcadInput = memo<MultiIcadInputProps>(function MultiIcadInput(
         </label>
       )}
 
-      {/* Input pour ajouter un numéro */}
       <div className="flex gap-2 mb-3">
         <div className="flex-1">
           <input
@@ -125,7 +124,6 @@ export const MultiIcadInput = memo<MultiIcadInputProps>(function MultiIcadInput(
         </button>
       </div>
 
-      {/* Liste des numéros ajoutés */}
       {value.length > 0 && (
         <div className="space-y-2 mb-2">
           <AnimatePresence>
@@ -168,12 +166,10 @@ export const MultiIcadInput = memo<MultiIcadInputProps>(function MultiIcadInput(
         </div>
       )}
 
-      {/* Compteur */}
       <p className="text-xs text-[#8B4513]/60 mb-1">
         {value.length} / {maxItems} numéros ajoutés
       </p>
 
-      {/* Helper text ou erreur globale */}
       {helperText && !error && (
         <p className="text-xs text-[#8B4513]/60">{helperText}</p>
       )}
@@ -182,7 +178,6 @@ export const MultiIcadInput = memo<MultiIcadInputProps>(function MultiIcadInput(
         <p className="text-xs text-red-500">{error}</p>
       )}
 
-      {/* Info sur les formats acceptés */}
       {value.length === 0 && (
         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-xs text-blue-800 font-semibold mb-1">ℹ️ Formats acceptés :</p>

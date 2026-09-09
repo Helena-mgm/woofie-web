@@ -7,30 +7,33 @@ use App\Entity\Owner;
 use App\Entity\Sitter;
 use App\Entity\Dog;
 use App\Entity\DogPhoto;
+use App\Entity\Post;
 use App\Repository\DogRepository;
 use App\Repository\OwnerRepository;
 use App\Repository\SitterRepository;
 use App\Repository\UserRepository;
+use App\Service\AuthCookieFactory;
+use App\Service\ImageUploadService;
+use App\Service\JwtService;
+use App\Service\LoginRateLimiter;
+use App\Service\SiretValidator;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class AuthController extends AbstractController
 {
-    private string $jwtKey;
-
-    public function __construct()
-    {
-        // simple secret for demo; in prod use env var
-        $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
+    public function __construct(
+        private JwtService $jwtService,
+        private AuthCookieFactory $authCookieFactory,
+        private LoginRateLimiter $loginRateLimiter,
+        private ImageUploadService $imageUploadService
+    ) {
     }
 
     #[Route('/api/register', name: 'api_register', methods: ['POST'])]
@@ -42,93 +45,86 @@ class AuthController extends AbstractController
         OwnerRepository $ownerRepository,
         SitterRepository $sitterRepository,
         DogRepository $dogRepository,
-        ValidatorInterface $validator
+        ValidatorInterface $validator,
+        SiretValidator $siretValidator
     ): JsonResponse
     {
-        // ── 1. Lecture des champs de base ──────────────────────────────────
-        $email    = $request->request->get('email');
-        $password = $request->request->get('password');
-        $type     = $request->request->get('type');
+        if ($retryAfter = $this->loginRateLimiter->assertRegisterAllowed((string) $request->getClientIp())) {
+            return new JsonResponse(['error' => 'Trop de tentatives. Réessayez plus tard.'], 429, ['Retry-After' => (string) $retryAfter]);
+        }
+
+        $emailRaw = $request->request->get('email');
+        $passwordRaw = $request->request->get('password');
+        $typeRaw = $request->request->get('type');
+
+        $email = is_string($emailRaw) ? mb_strtolower(trim($emailRaw)) : '';
+        $password = is_string($passwordRaw) ? $passwordRaw : '';
+        $type = is_string($typeRaw) ? $typeRaw : '';
 
         if (!$email || !$password || !$type) {
             return new JsonResponse(['error' => 'email, password and type are required'], 400);
         }
-        if (strlen($password) < 6) {
-            return new JsonResponse(['error' => 'Password must be at least 6 characters'], 400);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 180) {
+            return new JsonResponse(['error' => 'Adresse email invalide'], 400);
         }
-        if (!in_array($type, ['owner', 'sitter'])) {
+        if (mb_strlen($password) < 12 || mb_strlen($password) > 128) {
+            return new JsonResponse(['error' => 'Le mot de passe doit contenir entre 12 et 128 caractères'], 400);
+        }
+        if (!in_array($type, ['owner', 'sitter'], true)) {
             return new JsonResponse(['error' => 'type must be owner or sitter'], 400);
         }
         if ($repo->findOneByEmail($email)) {
             return new JsonResponse(['error' => 'Cet email est déjà utilisé'], 400);
         }
 
-        // ── 2. Validation spécifique au type (AVANT tout flush) ───────────
-        if ($type === 'owner') {
-            $nom          = $request->request->get('nom');
-            $prenom       = $request->request->get('prenom');
-            $telephoneRaw = $request->request->get('telephone');
-            $telephone    = $telephoneRaw ? preg_replace('/\s+/', '', $telephoneRaw) : null;
-            $ville        = $request->request->get('ville');
-            $dogsJson     = $request->request->get('dogs');
+        $profile = $this->normalizeProfileData($request);
+        if (is_string($profile)) {
+            return new JsonResponse(['error' => $profile], 400);
+        }
+        ['nom' => $nom, 'prenom' => $prenom, 'telephone' => $telephone, 'ville' => $ville] = $profile;
 
-            if (!$nom || !$prenom || !$telephone || !$ville) {
-                return new JsonResponse(['error' => 'nom, prenom, telephone and ville sont requis'], 400);
-            }
-            if ($ownerRepository->findOneBy(['telephone' => $telephone])) {
-                return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
-            }
-            if (!$dogsJson) {
+        if ($ownerRepository->findOneBy(['telephone' => $telephone]) || $sitterRepository->findOneBy(['telephone' => $telephone])) {
+            return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
+        }
+
+        $dogs = [];
+        $sitterData = [];
+
+        if ($type === 'owner') {
+            $dogsJson = $request->request->get('dogs');
+            if (!is_string($dogsJson)) {
                 return new JsonResponse(['error' => 'Au moins un chien est requis'], 400);
             }
-            $dogs = json_decode($dogsJson, true);
-            if (!is_array($dogs) || empty($dogs)) {
-                return new JsonResponse(['error' => 'Données chiens invalides'], 400);
+            $dogs = $this->normalizeDogs($dogsJson, $dogRepository);
+            if (is_string($dogs)) {
+                return new JsonResponse(['error' => $dogs], 400);
             }
-
-            // Validation ICAD avant tout persist
-            $seenIcad = [];
-            foreach ($dogs as $dogData) {
-                $icad = $dogData['icadNumber'] ?? null;
-                if (!$icad) continue;
-                if (in_array($icad, $seenIcad, true)) {
-                    return new JsonResponse(['error' => 'Numéro ICAD en double : ' . $icad], 400);
-                }
-                $seenIcad[] = $icad;
-                if ($dogRepository->findOneBy(['icadNumber' => $icad])) {
-                    return new JsonResponse(['error' => 'Numéro ICAD déjà utilisé : ' . $icad], 400);
-                }
-                foreach (['icadNumber', 'nom', 'sexe', 'race', 'dateNaissance'] as $f) {
-                    if (empty($dogData[$f])) {
-                        return new JsonResponse(['error' => "Champ '$f' manquant pour le chien " . ($dogData['nom'] ?? '?')], 400);
-                    }
-                }
-            }
-        } elseif ($type === 'sitter') {
-            $nom          = $request->request->get('nom');
-            $prenom       = $request->request->get('prenom');
-            $telephoneRaw = $request->request->get('telephone');
-            $telephone    = $telephoneRaw ? preg_replace('/\s+/', '', $telephoneRaw) : null;
-            $ville        = $request->request->get('ville');
+        } else {
             $siretRaw     = $request->request->get('siret');
-            $siret        = $siretRaw ? preg_replace('/\s+/', '', $siretRaw) : null;
+            $siretInput   = is_string($siretRaw) ? $siretRaw : '';
+            $siret        = $siretInput !== '' ? preg_replace('/[\s.-]+/', '', trim($siretInput)) : null;
 
-            if (!$nom || !$prenom || !$telephone || !$ville || !$siret) {
-                return new JsonResponse(['error' => 'nom, prenom, telephone, ville et siret sont requis'], 400);
+            if (!$siret) {
+                return new JsonResponse(['error' => 'Le numéro SIRET est requis'], 400);
             }
-            if ($sitterRepository->findOneBy(['telephone' => $telephone])) {
-                return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
+            $siretValidation = $siretValidator->validate($siretInput, false);
+            if (!$siretValidation['isValid']) {
+                return new JsonResponse(['error' => $siretValidation['message'] ?? 'Numéro SIRET invalide'], 400);
             }
             if ($sitterRepository->findOneBy(['siret' => $siret])) {
                 return new JsonResponse(['error' => 'Ce numéro SIRET est déjà utilisé'], 400);
             }
+
+            $sitterData = $this->normalizeSitterData($request);
+            if (is_string($sitterData)) {
+                return new JsonResponse(['error' => $sitterData], 400);
+            }
         }
 
-        // ── 3. Construction des entités + flush dans une transaction ──────
+        $uploadedPaths = [];
         try {
             $em->getConnection()->beginTransaction();
 
-            // User
             $user = new User();
             $user->setEmail($email);
             $user->setType($type);
@@ -143,7 +139,6 @@ class AuthController extends AbstractController
             $em->persist($user);
 
             if ($type === 'owner') {
-                /** @var string $nom @var string $prenom @var string $telephone @var string $ville @var array $dogs */
                 $owner = new Owner();
                 $owner->setUser($user);
                 $owner->setNom($nom);
@@ -151,13 +146,18 @@ class AuthController extends AbstractController
                 $owner->setTelephone($telephone);
                 $owner->setVille($ville);
 
+                $ownerErrors = $validator->validate($owner);
+                if (count($ownerErrors) > 0) {
+                    $em->getConnection()->rollBack();
+                    return new JsonResponse(['error' => (string) $ownerErrors], 400);
+                }
+
                 $photoFile = $request->files->get('photo');
                 if ($photoFile) {
                     $dir = $this->getParameter('kernel.project_dir') . '/public/uploads/owners';
-                    if (!is_dir($dir)) mkdir($dir, 0777, true);
-                    $fname = uniqid() . '.' . $photoFile->guessExtension();
-                    $photoFile->move($dir, $fname);
-                    $owner->setPhotoPath('/uploads/owners/' . $fname);
+                    $photoPath = $this->imageUploadService->storeUploadedImage($photoFile, $dir, '/uploads/owners');
+                    $uploadedPaths[] = $photoPath;
+                    $owner->setPhotoPath($photoPath);
                 }
 
                 $em->persist($owner);
@@ -169,35 +169,34 @@ class AuthController extends AbstractController
                     $dog->setNom($dogData['nom']);
                     $dog->setSexe($dogData['sexe']);
                     $dog->setRace($dogData['race']);
-                    try {
-                        $dog->setDateNaissance(new \DateTime($dogData['dateNaissance']));
-                    } catch (\Exception) {
+                    $dog->setDateNaissance($dogData['dateNaissance']);
+                    $dog->setIcadType($dogData['icadType']);
+
+                    $dogErrors = $validator->validate($dog);
+                    if (count($dogErrors) > 0) {
                         $em->getConnection()->rollBack();
-                        return new JsonResponse(['error' => 'Date de naissance invalide pour ' . $dogData['nom']], 400);
+                        $this->removeUploadedFiles($uploadedPaths);
+                        return new JsonResponse(['error' => (string) $dogErrors], 400);
                     }
-                    $icad = $dogData['icadNumber'];
-                    $dog->setIcadType(strlen($icad) === 15 && ctype_digit($icad) ? 'microchip' : 'tattoo');
 
                     $dogDir = $this->getParameter('kernel.project_dir') . '/public/uploads/dogs';
-                    if (!is_dir($dogDir)) mkdir($dogDir, 0777, true);
                     $photoOrder = 0;
                     for ($pi = 0; $pi < 5; $pi++) {
                         $dogPhoto = $request->files->get("dogPhoto_{$dogIndex}_{$pi}");
                         if (!$dogPhoto) continue;
-                        $dfname = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $dogData['nom']) . '.' . $dogPhoto->guessExtension();
-                        $dogPhoto->move($dogDir, $dfname);
+                        $photoPath = $this->imageUploadService->storeUploadedImage($dogPhoto, $dogDir, '/uploads/dogs');
+                        $uploadedPaths[] = $photoPath;
                         $dp = new DogPhoto();
                         $dp->setDog($dog);
-                        $dp->setPhotoPath('/uploads/dogs/' . $dfname);
+                        $dp->setPhotoPath($photoPath);
                         $dp->setDisplayOrder($photoOrder);
                         $em->persist($dp);
-                        if ($photoOrder === 0) $dog->setPhotoPath('/uploads/dogs/' . $dfname);
+                        if ($photoOrder === 0) $dog->setPhotoPath($photoPath);
                         $photoOrder++;
                     }
                     $em->persist($dog);
                 }
             } elseif ($type === 'sitter') {
-                /** @var string $nom @var string $prenom @var string $telephone @var string $ville @var string $siret */
                 $sitter = new Sitter();
                 $sitter->setUser($user);
                 $sitter->setNom($nom);
@@ -207,49 +206,29 @@ class AuthController extends AbstractController
                 $sitter->setSiret($siret);
                 $sitter->setIsVerified(false);
 
-                $bio         = $request->request->get('bio');
-                $servicesRaw = $request->request->get('services');
-                $price       = $request->request->get('price_per_hour');
-                $available   = $request->request->get('is_available');
-                $expYears    = $request->request->get('experience_years');
+                $sitter->setBio($sitterData['bio']);
+                $sitter->setServices($sitterData['services']);
+                $sitter->setPricePerHour($sitterData['pricePerHour']);
+                $sitter->setIsAvailable($sitterData['isAvailable']);
+                $sitter->setExperienceYears($sitterData['experienceYears']);
 
-                if ($bio)          $sitter->setBio($bio);
-                if ($servicesRaw) {
-                    $decoded = json_decode($servicesRaw, true);
-                    if (is_array($decoded)) {
-                        $sitter->setServices(array_values(array_filter(array_map(
-                            fn($s) => is_string($s) ? trim($s) : null, $decoded
-                        ))));
-                    }
-                }
-                if ($price !== null && $price !== '')
-                    $sitter->setPricePerHour(number_format((float) $price, 2, '.', ''));
-                if ($available !== null) {
-                    $av = filter_var($available, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                    if ($av !== null) $sitter->setIsAvailable($av);
-                }
-                if ($expYears !== null && $expYears !== '') {
-                    $y = (int) $expYears;
-                    if ($y < 0) {
-                        $em->getConnection()->rollBack();
-                        return new JsonResponse(['error' => 'experience_years doit être positif'], 400);
-                    }
-                    $sitter->setExperienceYears($y);
+                $sitterErrors = $validator->validate($sitter);
+                if (count($sitterErrors) > 0) {
+                    $em->getConnection()->rollBack();
+                    return new JsonResponse(['error' => (string) $sitterErrors], 400);
                 }
 
                 $photoFile = $request->files->get('photo');
                 if ($photoFile) {
-                    $dir = $this->getParameter('kernel.project_dir') . '/public/uploads';
-                    if (!is_dir($dir)) mkdir($dir, 0777, true);
-                    $fname = uniqid() . '.' . $photoFile->guessExtension();
-                    $photoFile->move($dir, $fname);
-                    $sitter->setPhotoPath('/uploads/' . $fname);
+                    $dir = $this->getParameter('kernel.project_dir') . '/public/uploads/sitters';
+                    $photoPath = $this->imageUploadService->storeUploadedImage($photoFile, $dir, '/uploads/sitters');
+                    $uploadedPaths[] = $photoPath;
+                    $sitter->setPhotoPath($photoPath);
                 }
 
                 $em->persist($sitter);
             }
 
-            // Un seul flush à la toute fin — atomique
             $em->flush();
             $em->getConnection()->commit();
 
@@ -257,90 +236,89 @@ class AuthController extends AbstractController
 
         } catch (UniqueConstraintViolationException $e) {
             if ($em->getConnection()->isTransactionActive()) $em->getConnection()->rollBack();
+            $this->removeUploadedFiles($uploadedPaths);
             $msg = $e->getMessage();
             if (str_contains($msg, 'telephone'))  return new JsonResponse(['error' => 'Ce numéro de téléphone est déjà utilisé'], 400);
             if (str_contains($msg, 'email'))       return new JsonResponse(['error' => 'Cet email est déjà utilisé'], 400);
             if (str_contains($msg, 'siret'))       return new JsonResponse(['error' => 'Ce numéro SIRET est déjà utilisé'], 400);
             if (str_contains($msg, 'icad'))        return new JsonResponse(['error' => 'Ce numéro ICAD est déjà utilisé'], 400);
             return new JsonResponse(['error' => 'Une donnée unique est déjà utilisée'], 400);
-        } catch (\Exception $e) {
+        } catch (\RuntimeException) {
             if ($em->getConnection()->isTransactionActive()) $em->getConnection()->rollBack();
-            return new JsonResponse(['error' => 'Inscription échouée : ' . $e->getMessage()], 500);
+            $this->removeUploadedFiles($uploadedPaths);
+            return new JsonResponse(['error' => 'Image invalide'], 400);
+        } catch (\Throwable $e) {
+            if ($em->getConnection()->isTransactionActive()) $em->getConnection()->rollBack();
+            $this->removeUploadedFiles($uploadedPaths);
+            error_log('[AuthController::register] ' . $e::class);
+            return new JsonResponse(['error' => 'Inscription échouée'], 500);
         }
     }
 
     #[Route('/api/login', name: 'api_login', methods: ['POST'])]
-    public function login(Request $request, UserRepository $repo, UserPasswordHasherInterface $hasher): JsonResponse
+    public function login(
+        Request $request,
+        UserRepository $repo,
+        OwnerRepository $ownerRepository,
+        SitterRepository $sitterRepository,
+        UserPasswordHasherInterface $hasher
+    ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $identifier = $data['identifier'] ?? $data['email'] ?? null;
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Payload invalide'], 400);
+        }
+
+        $identifierRaw = $data['identifier'] ?? $data['email'] ?? null;
         $password = $data['password'] ?? null;
 
+        if (!is_string($identifierRaw) || !is_string($password)) {
+            return new JsonResponse(['error' => 'Identifiant et mot de passe requis'], 400);
+        }
+
+        $identifier = trim($identifierRaw);
+
         if (!$identifier || !$password) {
-            return new JsonResponse(['error' => 'identifier (email or phone) and password required'], 400);
+            return new JsonResponse(['error' => 'Identifiant et mot de passe requis'], 400);
         }
 
-        // Try to find user by email first
-        $user = $repo->findOneByEmail($identifier);
-        
-        // If not found and identifier looks like a phone, try finding by phone
-        // This would require a findOneByPhone method in UserRepository
-        // For now, we'll just use email
-        
-        if (!$user) {
-            $identifierError = str_contains((string) $identifier, '@')
-                ? 'Adresse email inconnue'
-                : 'Identifiant introuvable';
+        $normalizedIdentifier = str_contains($identifier, '@')
+            ? mb_strtolower($identifier)
+            : preg_replace('/\s+/', '', $identifier);
+        $rateKey = $normalizedIdentifier . '|' . (string) $request->getClientIp();
+        if ($retryAfter = $this->loginRateLimiter->assertLoginAllowed($rateKey)) {
+            return new JsonResponse(['error' => 'Trop de tentatives. Réessayez plus tard.'], 429, ['Retry-After' => (string) $retryAfter]);
+        }
 
+        $user = str_contains($normalizedIdentifier, '@')
+            ? $repo->findOneByEmail($normalizedIdentifier)
+            : ($ownerRepository->findByTelephone($normalizedIdentifier)?->getUser()
+                ?? $sitterRepository->findByTelephone($normalizedIdentifier)?->getUser());
+
+        if (!$user || !$hasher->isPasswordValid($user, $password)) {
             return new JsonResponse([
-                'errors' => [
-                    'identifier' => $identifierError,
-                ],
+                'error' => 'Identifiants invalides',
             ], 401);
         }
 
-        if (!$hasher->isPasswordValid($user, $password)) {
-            return new JsonResponse([
-                'errors' => [
-                    'password' => 'Mot de passe incorrect',
-                ],
-            ], 401);
-        }
+        $this->loginRateLimiter->resetLogin($rateKey);
 
-        $payload = [
-            'sub' => $user->getId(),
-            'email' => $user->getEmail(),
-            'type' => $user->getType(),
-            'iat' => time(),
-            'exp' => time() + 3600 * 24 * 7, // 7 days
-        ];
+        $jwt = $this->jwtService->createToken($user);
 
-        $jwt = JWT::encode($payload, $this->jwtKey, 'HS256');
+        $response = new JsonResponse(['success' => true]);
+        $response->headers->setCookie($this->authCookieFactory->create($jwt, $request));
+        $response->headers->setCookie($this->authCookieFactory->createAuthMarker($request));
+        $response->headers->setCookie($this->authCookieFactory->createCsrfCookie($request));
 
-        return new JsonResponse(['token' => $jwt]);
+        return $response;
     }
 
     #[Route('/api/me', name: 'api_me', methods: ['GET'])]
-    public function me(Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    public function me(Request $request, EntityManagerInterface $em): JsonResponse
     {
-        // Extract JWT from Authorization header
-        $authHeader = $request->headers->get('Authorization');
-        
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return new JsonResponse(['error' => 'No token provided'], 401);
-        }
-
-        $token = substr($authHeader, 7); // Remove "Bearer " prefix
-
-        try {
-            $decoded = JWT::decode($token, new Key($this->jwtKey, 'HS256'));
-            $user = $userRepository->find($decoded->sub);
-
-            if (!$user) {
-                return new JsonResponse(['error' => 'User not found'], 401);
-            }
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'Invalid token: ' . $e->getMessage()], 401);
+        $user = $this->jwtService->getUserFromRequest($request);
+        if (!$user) {
+            return new JsonResponse(['error' => 'Unauthorized'], 401);
         }
 
         $data = [
@@ -352,7 +330,6 @@ class AuthController extends AbstractController
             'roles' => $user->getRoles(),
         ];
 
-        // Fetch Owner or Sitter profile based on type
         if ($user->getType() === 'owner') {
             $owner = $em->getRepository(\App\Entity\Owner::class)->findOneBy(['user' => $user]);
             if ($owner) {
@@ -383,22 +360,12 @@ class AuthController extends AbstractController
         return new JsonResponse($data);
     }
 
-    /** GET /api/me/export — RGPD: export de toutes les données personnelles */
     #[Route('/api/me/export', methods: ['GET'])]
-    public function exportAccount(Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    public function exportAccount(Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $header = $request->headers->get('Authorization');
-        if (!$header || !str_starts_with($header, 'Bearer ')) {
-            return new JsonResponse(['error' => 'Authentification requise'], 401);
-        }
-        try {
-            $decoded = \Firebase\JWT\JWT::decode(substr($header, 7), new \Firebase\JWT\Key($this->jwtKey, 'HS256'));
-            $user = $userRepository->find((int) $decoded->sub);
-        } catch (\Exception) {
-            return new JsonResponse(['error' => 'Token invalide'], 401);
-        }
+        $user = $this->jwtService->getUserFromRequest($request);
         if (!$user) {
-            return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
+            return new JsonResponse(['error' => 'Authentification requise'], 401);
         }
 
         $export = [
@@ -456,45 +423,235 @@ class AuthController extends AbstractController
         return new JsonResponse($export);
     }
 
-    /** DELETE /api/account — suppression RGPD du compte et de toutes les données */
     #[Route('/api/account', methods: ['DELETE'])]
-    public function deleteAccount(Request $request, EntityManagerInterface $em, UserRepository $userRepository): JsonResponse
+    public function deleteAccount(
+        Request $request,
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $hasher
+    ): JsonResponse
     {
-        $header = $request->headers->get('Authorization');
-        if (!$header || !str_starts_with($header, 'Bearer ')) {
-            return new JsonResponse(['error' => 'Authentification requise'], 401);
+        $user = $this->jwtService->getUserFromRequest($request);
+        if (!$user) return new JsonResponse(['error' => 'Authentification requise'], 401);
+
+        $data = json_decode($request->getContent(), true);
+        $password = is_array($data) ? ($data['password'] ?? null) : null;
+        if (!is_string($password) || $password === '') {
+            return new JsonResponse(['error' => 'Mot de passe requis'], 400);
         }
-        try {
-            $decoded = \Firebase\JWT\JWT::decode(substr($header, 7), new \Firebase\JWT\Key($this->jwtKey, 'HS256'));
-            $user = $userRepository->find((int) $decoded->sub);
-        } catch (\Exception) {
-            return new JsonResponse(['error' => 'Token invalide'], 401);
+        if (!$hasher->isPasswordValid($user, $password)) {
+            return new JsonResponse(['error' => 'Mot de passe incorrect'], 403);
         }
 
-        if (!$user) return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
-
-        // Confirmation optionnelle par mot de passe
-        $data = json_decode($request->getContent(), true) ?? [];
-        if (!empty($data['password'])) {
-            $hasher = $this->container->get('security.user_password_hasher');
-            if (!$hasher->isPasswordValid($user, $data['password'])) {
-                return new JsonResponse(['error' => 'Mot de passe incorrect'], 403);
+        $uploadedPaths = [];
+        $owner = $em->getRepository(Owner::class)->findOneBy(['user' => $user]);
+        if ($owner) {
+            $uploadedPaths[] = $owner->getPhotoPath();
+            foreach ($owner->getDogs() as $dog) {
+                $uploadedPaths[] = $dog->getPhotoPath();
+                foreach ($dog->getPhotos() as $photo) {
+                    $uploadedPaths[] = $photo->getPhotoPath();
+                }
+            }
+        }
+        $sitter = $em->getRepository(Sitter::class)->findOneBy(['user' => $user]);
+        if ($sitter) {
+            $uploadedPaths[] = $sitter->getPhotoPath();
+        }
+        foreach ($em->getRepository(Post::class)->findBy(['user' => $user]) as $post) {
+            foreach ($post->getImages() as $image) {
+                $uploadedPaths[] = $image->getImagePath();
             }
         }
 
-        // Cascade : User → Owner/Sitter/Dogs/Posts/Events/Notifications tous supprimés via ON DELETE CASCADE
         $em->remove($user);
         $em->flush();
+        $this->removeUploadedFiles($uploadedPaths);
 
-        return new JsonResponse(['success' => true, 'message' => 'Compte supprimé conformément au RGPD']);
+        $response = new JsonResponse(['success' => true, 'message' => 'Compte supprimé conformément au RGPD']);
+        $response->headers->setCookie($this->authCookieFactory->clear($request));
+        $response->headers->setCookie($this->authCookieFactory->clearAuthMarker($request));
+        $response->headers->setCookie($this->authCookieFactory->clearCsrfCookie($request));
+
+        return $response;
     }
 
-    /** GET /api/siret/{siret} — validation publique d'un numéro SIRET (format + Luhn + API Sirene si clé configurée) */
-    #[Route('/api/siret/{siret}', name: 'api_validate_siret', methods: ['GET'])]
-    public function validateSiret(string $siret, \App\Service\SiretValidator $siretValidator): JsonResponse
+    #[Route('/api/logout', name: 'api_logout', methods: ['POST'])]
+    public function logout(Request $request): JsonResponse
     {
+        $response = new JsonResponse(['success' => true]);
+        $response->headers->setCookie($this->authCookieFactory->clear($request));
+        $response->headers->setCookie($this->authCookieFactory->clearAuthMarker($request));
+        $response->headers->setCookie($this->authCookieFactory->clearCsrfCookie($request));
+
+        return $response;
+    }
+
+    #[Route('/api/siret/{siret}', name: 'api_validate_siret', methods: ['GET'])]
+    public function validateSiret(string $siret, Request $request, SiretValidator $siretValidator): JsonResponse
+    {
+        if ($retryAfter = $this->loginRateLimiter->assertSiretAllowed((string) $request->getClientIp())) {
+            return new JsonResponse(['error' => 'Trop de requêtes. Réessayez plus tard.'], 429, ['Retry-After' => (string) $retryAfter]);
+        }
         $normalized = preg_replace('/\s+/', '', $siret);
         $result = $siretValidator->validate((string) $normalized);
         return new JsonResponse($result);
+    }
+
+    private function normalizeProfileData(Request $request): array|string
+    {
+        $values = [];
+        foreach (['nom', 'prenom', 'telephone', 'ville'] as $field) {
+            $raw = $request->request->get($field);
+            if (!is_string($raw)) {
+                return 'Les informations personnelles sont invalides';
+            }
+            $values[$field] = trim($raw);
+        }
+
+        foreach (['nom', 'prenom'] as $field) {
+            $length = mb_strlen($values[$field]);
+            if ($length < 2 || $length > 100 || preg_match("/^[\\p{L}\\s'-]+$/u", $values[$field]) !== 1) {
+                return "Le champ {$field} est invalide";
+            }
+        }
+
+        if (mb_strlen($values['ville']) < 2 || mb_strlen($values['ville']) > 100) {
+            return 'La ville est invalide';
+        }
+
+        $values['telephone'] = preg_replace('/\s+/', '', $values['telephone']) ?? '';
+        if (preg_match('/^0[1-9]\d{8}$/', $values['telephone']) !== 1) {
+            return 'Le numéro de téléphone est invalide';
+        }
+
+        return $values;
+    }
+
+    private function normalizeDogs(string $dogsJson, DogRepository $dogRepository): array|string
+    {
+        $dogs = json_decode($dogsJson, true);
+        if (!is_array($dogs) || $dogs === [] || count($dogs) > 10) {
+            return 'Données chiens invalides';
+        }
+
+        $normalized = [];
+        $seenIcad = [];
+        foreach ($dogs as $index => $dogData) {
+            if (!is_array($dogData)) {
+                return 'Données chiens invalides';
+            }
+
+            foreach (['icadNumber', 'nom', 'sexe', 'race', 'dateNaissance'] as $field) {
+                if (!is_string($dogData[$field] ?? null)) {
+                    return 'Champ invalide pour le chien ' . ($index + 1);
+                }
+            }
+
+            $icad = strtoupper(preg_replace('/[\s.-]+/', '', trim($dogData['icadNumber'])) ?? '');
+            $name = trim($dogData['nom']);
+            $sex = strtoupper(trim($dogData['sexe']));
+            $breed = trim($dogData['race']);
+            $birthDate = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($dogData['dateNaissance']));
+            $dateErrors = \DateTimeImmutable::getLastErrors();
+
+            if (preg_match('/^(?:\d{15}|[A-Z]{3}\d{3}|\d{6}[A-Z]{3})$/', $icad) !== 1) {
+                return 'Numéro ICAD invalide pour le chien ' . ($index + 1);
+            }
+            if (isset($seenIcad[$icad]) || $dogRepository->findOneBy(['icadNumber' => $icad])) {
+                return 'Numéro ICAD déjà utilisé : ' . $icad;
+            }
+            if (mb_strlen($name) < 2 || mb_strlen($name) > 100 || !in_array($sex, ['M', 'F'], true)) {
+                return 'Nom ou sexe invalide pour le chien ' . ($index + 1);
+            }
+            if ($breed === '' || mb_strlen($breed) > 50) {
+                return 'Race invalide pour le chien ' . ($index + 1);
+            }
+            if (!$birthDate || ($dateErrors !== false && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0))
+                || $birthDate->format('Y-m-d') !== trim($dogData['dateNaissance']) || $birthDate > new \DateTimeImmutable('today')) {
+                return 'Date de naissance invalide pour le chien ' . ($index + 1);
+            }
+
+            $seenIcad[$icad] = true;
+            $normalized[] = [
+                'icadNumber' => $icad,
+                'icadType' => ctype_digit($icad) ? 'microchip' : 'tattoo',
+                'nom' => $name,
+                'sexe' => $sex,
+                'race' => $breed,
+                'dateNaissance' => $birthDate,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeSitterData(Request $request): array|string
+    {
+        $bioRaw = $request->request->get('bio');
+        $servicesRaw = $request->request->get('services');
+        $priceRaw = $request->request->get('price_per_hour');
+        $availabilityRaw = $request->request->get('is_available');
+        $experienceRaw = $request->request->get('experience_years');
+
+        if (!is_string($bioRaw) || !is_string($servicesRaw) || !is_string($priceRaw)) {
+            return 'Les informations professionnelles sont invalides';
+        }
+
+        $bio = trim($bioRaw);
+        if (mb_strlen($bio) < 30 || mb_strlen($bio) > 500) {
+            return 'La présentation doit contenir entre 30 et 500 caractères';
+        }
+
+        $services = json_decode($servicesRaw, true);
+        if (!is_array($services) || $services === [] || count($services) > 20) {
+            return 'La liste de services est invalide';
+        }
+        $cleanedServices = [];
+        foreach ($services as $service) {
+            if (!is_string($service) || ($service = trim($service)) === '' || mb_strlen($service) > 100) {
+                return 'La liste de services est invalide';
+            }
+            $cleanedServices[] = $service;
+        }
+
+        if (!is_numeric($priceRaw) || !is_finite((float) $priceRaw) || (float) $priceRaw <= 0 || (float) $priceRaw > 99999.99) {
+            return 'Le tarif horaire est invalide';
+        }
+
+        $availability = $availabilityRaw === null
+            ? true
+            : (is_string($availabilityRaw) ? filter_var($availabilityRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) : null);
+        if ($availability === null) {
+            return 'La disponibilité est invalide';
+        }
+
+        $experience = null;
+        if ($experienceRaw !== null && $experienceRaw !== '') {
+            if (!is_string($experienceRaw)) {
+                return "Le nombre d'années d'expérience est invalide";
+            }
+            $experience = filter_var($experienceRaw, FILTER_VALIDATE_INT);
+            if ($experience === false || $experience < 0 || $experience > 100) {
+                return "Le nombre d'années d'expérience est invalide";
+            }
+        }
+
+        return [
+            'bio' => $bio,
+            'services' => array_values(array_unique($cleanedServices)),
+            'pricePerHour' => number_format((float) $priceRaw, 2, '.', ''),
+            'isAvailable' => $availability,
+            'experienceYears' => $experience,
+        ];
+    }
+
+    private function removeUploadedFiles(array $paths): void
+    {
+        $publicDir = (string) $this->getParameter('kernel.project_dir') . '/public';
+        foreach ($paths as $path) {
+            if (is_string($path) && str_starts_with($path, '/uploads/')) {
+                @unlink($publicDir . $path);
+            }
+        }
     }
 }

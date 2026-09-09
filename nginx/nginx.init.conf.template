@@ -13,7 +13,7 @@ events {}
 http {
     server {
         listen 80;
-        server_name woofie.ovh www.woofie.ovh;
+        server_name ${APP_DOMAIN} www.${APP_DOMAIN};
 
         # Challenge ACME — Let's Encrypt écrit ici, nginx sert le fichier
         location /.well-known/acme-challenge/ {

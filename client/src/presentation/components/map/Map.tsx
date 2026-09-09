@@ -1,33 +1,29 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import maplibregl, { Map as MapLibreMap, Marker, Popup } from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapProps } from '@/shared/types/map';
 
-// Suppress WebGL warnings globally
-if (typeof window !== 'undefined') {
-  const originalWarn = console.warn;
-  const originalError = console.error;
-  
-  console.warn = (...args: unknown[]) => {
-    const message = String(args[0] ?? '');
-    if (message.includes('WebGL') || message.includes('GroupMarkerNotSet') || message.includes('swiftshader')) {
-      return;
-    }
-    originalWarn.apply(console, args);
-  };
-  
-  console.error = (...args: unknown[]) => {
-    const message = String(args[0] ?? '');
-    if (message.includes('WebGL') || message.includes('GroupMarkerNotSet') || message.includes('swiftshader')) {
-      return;
-    }
-    originalError.apply(console, args);
-  };
-}
-
 const mapDebugEnabled = process.env.NEXT_PUBLIC_MAP_DEBUG === 'true';
+
+const debugLog = (...args: unknown[]): void => {
+  if (mapDebugEnabled) {
+    console.info(...args);
+  }
+};
+
+const debugWarn = (...args: unknown[]): void => {
+  if (mapDebugEnabled) {
+    console.warn(...args);
+  }
+};
+
+const debugError = (...args: unknown[]): void => {
+  if (mapDebugEnabled) {
+    console.error(...args);
+  }
+};
 
 /** Échappe les caractères HTML pour éviter les injections XSS dans les popups MapLibre */
 const escapeHtml = (str: string): string =>
@@ -200,9 +196,9 @@ export function Map({
   initialZoom = 12,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<Marker[]>([]);
-  const poiMarkersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
+  const map = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const poiMarkersRef = useRef<globalThis.Map<string, maplibregl.Marker>>(new globalThis.Map());
   const [mapLoaded, setMapLoaded] = useState(false);
   const [poiError, setPoiError] = useState<string | null>(null);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
@@ -323,7 +319,7 @@ export function Map({
     events.forEach((event) => {
         if (!event.lat || !event.lng) return; // Skip invalid events
 
-        const popup = new Popup({ 
+        const popup = new maplibregl.Popup({
           offset: 25,
           closeButton: true,
           closeOnClick: true,
@@ -364,16 +360,24 @@ export function Map({
           z-index: 10;
         `;
         
-        el.innerHTML = `
-          <svg width="26" height="26" fill="white" viewBox="0 0 512 512" style="pointer-events: none; position: relative; z-index: 1;">
-            <path d="M226.5 92.9c14.3 42.9-.3 86.2-32.6 96.8s-70.1-15.6-84.4-58.5s.3-86.2 32.6-96.8s70.1 15.6 84.4 58.5zM100.4 198.6c18.9 32.4 14.3 70.1-10.2 84.1s-59.7-.9-78.5-33.3S-2.7 179.3 21.8 165.3s59.7 .9 78.5 33.3zM69.2 401.2C121.6 259.9 214.7 224 256 224s134.4 35.9 186.8 177.2c3.6 9.7 5.2 20.1 5.2 30.5v1.6c0 25.8-20.9 46.7-46.7 46.7c-11.5 0-22.9-1.4-34-4.2l-88-22c-15.3-3.8-31.3-3.8-46.6 0l-88 22c-11.1 2.8-22.5 4.2-34 4.2C84.9 480 64 459.1 64 433.3v-1.6c0-10.4 1.6-20.8 5.2-30.5zM421.8 282.7c-24.5-14-29.1-51.7-10.2-84.1s54-47.3 78.5-33.3s29.1 51.7 10.2 84.1s-54 47.3-78.5 33.3zM310.1 189.7c-32.3-10.6-46.9-53.9-32.6-96.8s52.1-69.1 84.4-58.5s46.9 53.9 32.6 96.8s-52.1 69.1-84.4 58.5z"/>
-          </svg>
-        `; // SVG statique hardcodé — aucune donnée utilisateur injectée
+        const markerIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        markerIcon.setAttribute('width', '26');
+        markerIcon.setAttribute('height', '26');
+        markerIcon.setAttribute('fill', 'white');
+        markerIcon.setAttribute('viewBox', '0 0 512 512');
+        markerIcon.style.pointerEvents = 'none';
+        markerIcon.style.position = 'relative';
+        markerIcon.style.zIndex = '1';
+
+        const markerPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        markerPath.setAttribute('d', 'M226.5 92.9c14.3 42.9-.3 86.2-32.6 96.8s-70.1-15.6-84.4-58.5s.3-86.2 32.6-96.8s70.1 15.6 84.4 58.5zM100.4 198.6c18.9 32.4 14.3 70.1-10.2 84.1s-59.7-.9-78.5-33.3S-2.7 179.3 21.8 165.3s59.7 .9 78.5 33.3zM69.2 401.2C121.6 259.9 214.7 224 256 224s134.4 35.9 186.8 177.2c3.6 9.7 5.2 20.1 5.2 30.5v1.6c0 25.8-20.9 46.7-46.7 46.7c-11.5 0-22.9-1.4-34-4.2l-88-22c-15.3-3.8-31.3-3.8-46.6 0l-88 22c-11.1 2.8-22.5 4.2-34 4.2C84.9 480 64 459.1 64 433.3v-1.6c0-10.4 1.6-20.8 5.2-30.5zM421.8 282.7c-24.5-14-29.1-51.7-10.2-84.1s54-47.3 78.5-33.3s29.1 51.7 10.2 84.1s-54 47.3-78.5 33.3zM310.1 189.7c-32.3-10.6-46.9-53.9-32.6-96.8s52.1-69.1 84.4-58.5s46.9 53.9 32.6 96.8s-52.1 69.1-84.4 58.5z');
+        markerIcon.append(markerPath);
+        el.append(markerIcon);
 
         el.addEventListener('mouseenter', () => { el.style.boxShadow = '0 6px 20px rgba(0,0,0,0.5)'; el.style.borderWidth = '4px'; });
         el.addEventListener('mouseleave', () => { el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)'; el.style.borderWidth = '3px'; });
 
-        const marker = new Marker({ 
+        const marker = new maplibregl.Marker({
           element: el,
           anchor: 'center', // Center anchor for round markers
         })
@@ -383,17 +387,13 @@ export function Map({
 
         // Open popup on click - Multiple event listeners for reliability
         el.addEventListener('click', (e) => {
-          if (mapDebugEnabled) {
-            console.log('🎯 Event marker clicked!', event.name);
-          }
+          debugLog('🎯 Event marker clicked!', event.name);
           e.stopPropagation();
           marker.togglePopup();
         });
 
         el.addEventListener('touchend', (e) => {
-          if (mapDebugEnabled) {
-            console.log('👆 Event marker touched!', event.name);
-          }
+          debugLog('👆 Event marker touched!', event.name);
           e.stopPropagation();
           e.preventDefault();
           marker.togglePopup();
@@ -432,9 +432,7 @@ export function Map({
 
       // Rate limiting check
       if (!force && now - lastPOIFetchRef.current < MIN_INTERVAL) {
-        if (mapDebugEnabled) {
-          console.log('⏱️ POI: Waiting for rate limit...');
-        }
+        debugLog('⏱️ POI: Waiting for rate limit...');
         return;
       }
 
@@ -448,9 +446,7 @@ export function Map({
       // Check if movement is significant enough
       const lastBounds = lastBoundsRef.current;
       if (!force && lastBounds && boundsDistance(currentBounds, lastBounds) < MIN_MOVE_DISTANCE) {
-        if (mapDebugEnabled) {
-          console.log('📍 POI: Minimal movement, no fetch');
-        }
+        debugLog('📍 POI: Minimal movement, no fetch');
         return;
       }
 
@@ -465,9 +461,7 @@ export function Map({
 
       // Check cache first
       if (poiCacheRef.current[cacheKey]) {
-        if (mapDebugEnabled) {
-          console.log('💾 POI: Data from cache');
-        }
+        debugLog('💾 POI: Data from cache');
         delete warmupAttemptsRef.current[cacheKey];
         lastBoundsRef.current = currentBounds;
         renderPOIs(poiCacheRef.current[cacheKey]);
@@ -486,9 +480,7 @@ export function Map({
           east: east.toString(),
         });
 
-        if (mapDebugEnabled) {
-          console.log('🌐 POI: Fetching from backend proxy...');
-        }
+        debugLog('🌐 POI: Fetching from backend proxy...');
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -525,9 +517,7 @@ export function Map({
             }
             warmupTimeoutRef.current = setTimeout(() => {
               if (!isMounted) return;
-              if (mapDebugEnabled) {
-                console.log('🔁 POI: Retrying after warmup');
-              }
+              debugLog('🔁 POI: Retrying after warmup');
               fetchPOIs({ force: true });
             }, 2000);
           } else {
@@ -550,21 +540,16 @@ export function Map({
         }
 
         renderPOIs(markerData);
-        if (mapDebugEnabled) {
-          console.log(`✅ POI: ${markerData.length} POIs loaded`);
-        }
+        debugLog(`✅ POI: ${markerData.length} POIs loaded`);
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          if (mapDebugEnabled) {
-            console.warn('⏱️ POI: Timeout');
-          }
+          debugWarn('⏱️ POI: Timeout');
         } else {
-          // Always surface the underlying error to help debugging cross-environment issues
-          console.error('POI fetch failed', error);
+          debugError('POI fetch failed', error);
           const reason = error instanceof Error ? error.message : 'Erreur inconnue';
           setPoiError(`Erreur lors de la récupération des points d’intérêt (${reason}). Vérifiez que le backend a bien des données importées.`);
-          if (mapDebugEnabled && error instanceof Error) {
-            console.error('❌ POI: Error', error.message);
+          if (error instanceof Error) {
+            debugError('❌ POI: Error', error.message);
           }
         }
       }
@@ -584,7 +569,6 @@ export function Map({
         return;
       }
 
-      // Diff-based rendering: only add/remove what changed
       const incomingKeys = new Set<string>();
 
       markersData.forEach(({ element, coords }) => {
@@ -653,7 +637,7 @@ export function Map({
         // Lazily build popup only on first click
         const address = formatAddress(element.tags);
         const mapsUrl = buildGoogleMapsUrl(element, coords, address);
-        const popup = new Popup({ offset: 25 });
+        const popup = new maplibregl.Popup({ offset: 25 });
         let popupReady = false;
         el.addEventListener('click', () => {
           if (!popupReady) {
@@ -673,7 +657,7 @@ export function Map({
           }
         }, { once: false });
 
-        const marker = new Marker({ element: wrapper, anchor: 'center' })
+        const marker = new maplibregl.Marker({ element: wrapper, anchor: 'center' })
           .setLngLat([coords.lon, coords.lat])
           .setPopup(popup)
           .addTo(map.current!);

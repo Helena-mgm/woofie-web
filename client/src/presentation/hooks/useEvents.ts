@@ -19,7 +19,6 @@ export function useEvents(userId?: number) {
   const [selectedCategory, setSelectedCategory] = useState<EventCategory>('all');
   const [viewMode, setViewMode]                 = useState<ViewMode>('list');
 
-  // ── Chargement ─────────────────────────────────────────────────────────
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
@@ -36,7 +35,6 @@ export function useEvents(userId?: number) {
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
-  // ── Filtres ─────────────────────────────────────────────────────────────
   const filteredUpcoming = useMemo(() =>
     selectedCategory === 'all' ? upcoming : upcoming.filter(e => e.category === selectedCategory),
   [upcoming, selectedCategory]);
@@ -45,7 +43,6 @@ export function useEvents(userId?: number) {
     selectedCategory === 'all' ? past : past.filter(e => e.category === selectedCategory),
   [past, selectedCategory]);
 
-  // ── Actions ─────────────────────────────────────────────────────────────
   const joinEvent = useCallback(async (eventId: number): Promise<Event | null> => {
     if (!tokenManager.exists()) return null;
     try {

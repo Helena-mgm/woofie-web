@@ -17,7 +17,7 @@ export function EventAttendeesModal({ event, open, onClose }: Props) {
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
         <h3 className="text-lg font-bold mb-4">Participants — {event.title}</h3>
         {list.length === 0 ? (
-          <p className="text-gray-500">Personne n'est encore inscrit.</p>
+          <p className="text-gray-500">Personne n&apos;est encore inscrit.</p>
         ) : (
           <ul className="space-y-2">
             {list.map((id) => (

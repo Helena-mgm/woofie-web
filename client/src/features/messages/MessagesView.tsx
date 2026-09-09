@@ -61,7 +61,6 @@ export function MessagesView() {
 
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden bg-[#FAF6F1]">
-      {/* Sidebar — full screen on mobile (list), fixed w-72 on desktop */}
       <div
         className={cn(
           // Desktop (lg+): always shown, fixed width, no grow
@@ -79,7 +78,6 @@ export function MessagesView() {
         />
       </div>
 
-      {/* Thread — full screen on mobile (thread), flex-1 on desktop */}
       <div
         className={cn(
           // Desktop (lg+): always shown, takes remaining space

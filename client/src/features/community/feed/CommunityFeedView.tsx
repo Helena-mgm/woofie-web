@@ -49,7 +49,7 @@ export function CommunityFeedView() {
       localStorage.setItem(key, "1");
       setShowHero(true);
     }
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
     void refresh();

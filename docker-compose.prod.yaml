@@ -1,7 +1,6 @@
 # ============================================================
 # 🐾 Woofie — Docker Compose PRODUCTION
-# Domaine : https://woofie.ovh
-# VPS     : 152.228.140.199
+# Les valeurs propres à l'environnement viennent de .env.prod.
 # ============================================================
 # Usage :
 #   cp .env.prod.example .env.prod   # (une seule fois, sur le VPS)
@@ -16,13 +15,13 @@ services:
     image: postgres:15
     container_name: woofie-db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-woofie}
+      POSTGRES_USER: ${POSTGRES_USER:?Variable POSTGRES_USER obligatoire dans .env.prod}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?❌ Variable POSTGRES_PASSWORD obligatoire dans .env.prod}
-      POSTGRES_DB: woofie
+      POSTGRES_DB: ${POSTGRES_DB:?Variable POSTGRES_DB obligatoire dans .env.prod}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-woofie}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -37,12 +36,21 @@ services:
     container_name: woofie-backend
     environment:
       APP_ENV: prod
-      DEFAULT_URI: "https://woofie.ovh"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-woofie}:${POSTGRES_PASSWORD}@db:5432/woofie?serverVersion=15&charset=utf8"
-      OLLAMA_API_URL: "http://ollama:11434"
+      DEFAULT_URI: ${APP_URL:?❌ Variable APP_URL obligatoire dans .env.prod}
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
+      OLLAMA_API_URL: ${OLLAMA_API_URL:?❌ Variable OLLAMA_API_URL obligatoire dans .env.prod}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Variable OLLAMA_MODEL obligatoire dans .env.prod}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:?Variable OLLAMA_TIMEOUT_SECONDS obligatoire dans .env.prod}
+      OLLAMA_MAX_RESPONSE_CHARS: ${OLLAMA_MAX_RESPONSE_CHARS:?Variable OLLAMA_MAX_RESPONSE_CHARS obligatoire dans .env.prod}
       MESSENGER_TRANSPORT_DSN: "sync://"
       APP_SECRET: ${APP_SECRET:?❌ Variable APP_SECRET obligatoire dans .env.prod}
       JWT_SECRET: ${JWT_SECRET:?❌ Variable JWT_SECRET obligatoire dans .env.prod}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-3600}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-1}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:?❌ Variable CORS_ALLOW_ORIGIN obligatoire dans .env.prod}
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-5242880}
+      UPLOAD_MAX_PIXELS: ${UPLOAD_MAX_PIXELS:-20000000}
+      INSEE_API_KEY: ${INSEE_API_KEY:-}
     volumes:
       # Volume partagé avec nginx pour servir les fichiers uploadés
       - uploads:/var/www/html/public/uploads
@@ -67,7 +75,7 @@ services:
     environment:
       NODE_ENV: production
       # Appels serveur-side (SSR/API routes) → passent par nginx interne
-      INTERNAL_API_BASE: "http://nginx"
+      INTERNAL_API_BASE: ${INTERNAL_API_BASE:?❌ Variable INTERNAL_API_BASE obligatoire dans .env.prod}
     expose:
       - "3000"
     depends_on:
@@ -84,6 +92,8 @@ services:
       - ollama_data:/root/.ollama
     expose:
       - "11434"
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Variable OLLAMA_MODEL obligatoire dans .env.prod}
     restart: unless-stopped
     networks:
       - woofie
@@ -96,13 +106,18 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.prod.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       # Uploads partagés avec symfony
       - uploads:/var/www/html/public/uploads:ro
       # Let's Encrypt — challenge ACME (renouvellement auto)
       - ./certbot/www:/var/www/certbot:ro
       # Let's Encrypt — certificats SSL
       - ./certbot/conf:/etc/letsencrypt:ro
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Variable APP_DOMAIN obligatoire dans .env.prod}
+      NGINX_UPLOAD_MAX_SIZE: ${NGINX_UPLOAD_MAX_SIZE:?Variable NGINX_UPLOAD_MAX_SIZE obligatoire dans .env.prod}
+      NGINX_ENVSUBST_FILTER: ^(APP_DOMAIN|NGINX_UPLOAD_MAX_SIZE)$$
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
     depends_on:
       - symfony
       - nextjs

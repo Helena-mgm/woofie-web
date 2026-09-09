@@ -9,7 +9,7 @@ interface SitterServicesProps {
   isAvailable?: boolean;
   experienceYears?: number | null;
   telephone?: string;
-  email: string;
+  email?: string;
 }
 
 export function SitterServices({
@@ -61,12 +61,14 @@ export function SitterServices({
         <div className="rounded-2xl bg-white/80 p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-[#A0522D] mb-2">Contact</h3>
           <ul className="space-y-2 text-sm text-[#3E2A1B]">
-            <li>
-              <span className="font-semibold">Email :</span>{' '}
-              <a href={`mailto:${email}`} className="text-[#D2691E] hover:underline">
-                {email}
-              </a>
-            </li>
+            {email && (
+              <li>
+                <span className="font-semibold">Email :</span>{' '}
+                <a href={`mailto:${email}`} className="text-[#D2691E] hover:underline">
+                  {email}
+                </a>
+              </li>
+            )}
             {telephone && (
               <li>
                 <span className="font-semibold">Téléphone :</span>{' '}

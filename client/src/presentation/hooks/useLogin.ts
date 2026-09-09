@@ -4,10 +4,6 @@ import { apiPost, tokenManager } from '@/shared/lib/api';
 import { VALIDATION } from '@/infrastructure/config/constants';
 import type { AuthResponse } from '@/types';
 
-/**
- * Custom hook for login logic
- * Rule: < 60 lines, single responsibility
- */
 export function useLogin() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
@@ -32,8 +28,6 @@ export function useLogin() {
 
     if (!password) {
       newErrors.password = 'Mot de passe requis';
-    } else if (password.length < VALIDATION.password.minLength) {
-      newErrors.password = VALIDATION.password.message;
     }
 
     setErrors(newErrors);
@@ -83,9 +77,8 @@ export function useLogin() {
 
       const authData = response.data as AuthResponse;
 
-      if (authData?.token) {
-        tokenManager.save(authData.token);
-        // Notify other components that auth state changed
+      if (authData?.success) {
+        tokenManager.save();
         window.dispatchEvent(new Event('auth-change'));
         router.push('/community');
       } else {
