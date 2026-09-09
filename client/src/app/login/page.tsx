@@ -7,13 +7,8 @@ import { AuthLayout } from '@/presentation/components/auth/AuthLayout';
 import { PasswordInput } from '@/presentation/components/auth/PasswordInput';
 import { AnimatedDog } from '@/presentation/components/AnimatedDog';
 import { useLogin } from '@/presentation/hooks/useLogin';
-import { tokenManager } from '@/shared/lib/api';
+import { apiGet, tokenManager } from '@/shared/lib/api';
 
-/**
- * Login Page - Ultra simplified
- * Rule: < 70 lines, composition only
- * Redirects to dashboard if already logged in
- */
 export default function LoginPage() {
   const router = useRouter();
   const {
@@ -26,11 +21,31 @@ export default function LoginPage() {
     handleSubmit
   } = useLogin();
 
-  // Redirect if already logged in
   useEffect(() => {
-    if (tokenManager.exists()) {
-      router.push('/dashboard');
+    let cancelled = false;
+
+    async function redirectIfSessionIsValid() {
+      if (!tokenManager.exists()) {
+        return;
+      }
+
+      const response = await apiGet('/api/me');
+      if (cancelled) {
+        return;
+      }
+
+      if (response.ok) {
+        router.replace('/community');
+      } else {
+        tokenManager.remove();
+      }
     }
+
+    redirectIfSessionIsValid();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return (

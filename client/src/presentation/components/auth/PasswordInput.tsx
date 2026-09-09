@@ -15,11 +15,6 @@ interface PasswordInputProps {
   onToggleVisibility?: (show: boolean) => void;
 }
 
-/**
- * Password Input with animated emoji toggle (🔒/🔓)
- * Reusable component for login/register forms
- * Rule: < 40 lines, single responsibility
- */
 export function PasswordInput({
   label = 'Mot de passe',
   name,

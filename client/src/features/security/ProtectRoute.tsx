@@ -10,8 +10,7 @@ export function ProtectRoute({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const token = tokenManager.get();
-    if (!token) {
+    if (!tokenManager.exists()) {
       const redirect = encodeURIComponent(window.location.pathname);
       router.replace(`/login?redirect=${redirect}`);
       return;

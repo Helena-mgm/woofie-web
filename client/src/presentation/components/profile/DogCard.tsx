@@ -15,10 +15,6 @@ interface DogCardProps {
   };
 }
 
-/**
- * Instagram-style Dog Card - Square Grid
- * Rule: < 30 lines
- */
 export function DogCard({ dog }: DogCardProps) {
   return (
     <motion.div
@@ -39,7 +35,6 @@ export function DogCard({ dog }: DogCardProps) {
         </div>
       )}
       
-      {/* Overlay on hover */}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
         <div className="text-center text-white">
           <p className="text-xl font-semibold">{dog.nom}</p>

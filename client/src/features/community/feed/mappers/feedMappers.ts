@@ -2,7 +2,8 @@ import type { Post, Comment } from "@/shared/types/forum";
 
 type ApiUser = {
   id: number;
-  email: string;
+  name?: string;
+  profilePicture?: string;
   owner?: { nom: string; profilePicture?: string; ville?: string };
 };
 
@@ -31,10 +32,9 @@ type ApiPost = {
 
 const mapUser = (user: ApiUser) => ({
   id: user.id,
-  email: user.email,
-  nom: user.owner?.nom ?? "Woofie Friend",
+  nom: user.name ?? user.owner?.nom ?? "Membre Woofie",
   prenom: "",
-  photo_path: user.owner?.profilePicture,
+  photo_path: user.profilePicture ?? user.owner?.profilePicture,
   type: "owner" as const,
   city: user.owner?.ville,
 });

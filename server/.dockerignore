@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.local.example
+.git
+.gitignore
+.phpunit.cache
+cache
+public/uploads
+tests
+var
+vendor

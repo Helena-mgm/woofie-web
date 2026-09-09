@@ -13,19 +13,26 @@
 
 import { VALIDATION } from '@/infrastructure/config/constants';
 
+const siretDebugEnabled = process.env.NEXT_PUBLIC_SIRET_DEBUG === 'true';
+
 export interface SiretValidationResult {
   isValid: boolean;
   formatted: string;
-  exists?: boolean; // true si vérifié via API Sirene
-  companyName?: string; // Nom de l'entreprise depuis l'API
+  exists?: boolean;
+  companyName?: string;
   message?: string;
 }
 
 /**
- * Normalise un numéro SIRET (enlève espaces et caractères spéciaux)
+ * Normalise un numéro SIRET saisi avec espaces, tirets ou points.
  */
 export const normalizeSiret = (siret: string): string => {
-  return siret.replace(/\s/g, '').trim();
+  const trimmed = siret.trim();
+  if (!trimmed || !/^[\d\s.-]+$/.test(trimmed)) {
+    return '';
+  }
+
+  return trimmed.replace(/[\s.-]+/g, '');
 };
 
 /**
@@ -63,11 +70,10 @@ export const validateLuhn = (siret: string): boolean => {
   
   let sum = 0;
   
-  for (let i = 0; i < 14; i++) {
+  for (let i = 13, positionFromRight = 0; i >= 0; i--, positionFromRight++) {
     let digit = parseInt(normalized[i], 10);
     
-    // Pour les positions paires (index impair car on compte de droite à gauche)
-    if (i % 2 === 1) {
+    if (positionFromRight % 2 === 1) {
       digit *= 2;
       if (digit > 9) {
         digit -= 9;
@@ -115,7 +121,9 @@ export const checkSiretExistence = async (siret: string): Promise<{
       error: data.exists ? undefined : (data.message || 'Vérification API non disponible'),
     };
   } catch (error) {
-    console.error('Erreur vérification SIRET:', error);
+    if (siretDebugEnabled) {
+      console.error('Erreur vérification SIRET:', error);
+    }
     return {
       exists: false,
       error: 'Erreur lors de la vérification du SIRET',
@@ -166,8 +174,6 @@ export const validateSiret = async (
         message: `✓ Entreprise trouvée : ${existenceCheck.companyName}`,
       };
     } else {
-      // Si l'API ne fonctionne pas, on accepte quand même (format + Luhn OK)
-      // L'admin vérifiera manuellement
       return {
         isValid: true,
         formatted: formatSiret(normalized),

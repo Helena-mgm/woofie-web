@@ -1,7 +1,24 @@
-// Singleton WebSocket service pour le chat
 import type { WSMessage, OutboundWSMessage } from '@/shared/types/chat';
 
 const wsDebugEnabled = process.env.NEXT_PUBLIC_WS_DEBUG === 'true';
+
+const wsDebugInfo = (...args: unknown[]): void => {
+  if (wsDebugEnabled) {
+    console.info(...args);
+  }
+};
+
+const wsDebugWarn = (...args: unknown[]): void => {
+  if (wsDebugEnabled) {
+    console.warn(...args);
+  }
+};
+
+const wsDebugError = (...args: unknown[]): void => {
+  if (wsDebugEnabled) {
+    console.error(...args);
+  }
+};
 
 type MessageHandler = (message: WSMessage) => void;
 
@@ -16,7 +33,6 @@ class ChatWebSocketService {
   private url: string;
 
   private constructor() {
-    // SSR-safe: ne s'exécute que côté client
     if (typeof window !== 'undefined') {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = process.env.NEXT_PUBLIC_WS_HOST || window.location.host;
@@ -27,40 +43,34 @@ class ChatWebSocketService {
   }
 
   public static getInstance(): ChatWebSocketService {
-    // SSR-safe: ne crée l'instance que côté client
-    if (typeof window === 'undefined') {
-      return {} as ChatWebSocketService; // Mock pour SSR
-    }
     if (!ChatWebSocketService.instance) {
       ChatWebSocketService.instance = new ChatWebSocketService();
     }
     return ChatWebSocketService.instance;
   }
 
-  public connect(token?: string): void {
-    // Désactiver WebSocket si la variable d'environnement est false
+  public connect(): void {
     if (process.env.NEXT_PUBLIC_WS_ENABLED === 'false') {
-      if (wsDebugEnabled) {
-        console.log('⚠️ WebSocket is disabled via NEXT_PUBLIC_WS_ENABLED');
-      }
+      wsDebugInfo('⚠️ WebSocket is disabled via NEXT_PUBLIC_WS_ENABLED');
+      return;
+    }
+
+    if (typeof WebSocket === 'undefined') {
+      wsDebugWarn('⚠️ WebSocket API is unavailable in this runtime');
       return;
     }
 
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
-    const wsUrl = token ? `${this.url}?token=${token}` : this.url;
-    
     try {
-      this.ws = new WebSocket(wsUrl);
+      this.ws = new WebSocket(this.url);
     } catch (error) {
-      console.error('❌ Failed to create WebSocket:', error);
+      wsDebugError('❌ Failed to create WebSocket:', error);
       return;
     }
 
     this.ws.onopen = () => {
-      if (wsDebugEnabled) {
-        console.log('💬 WebSocket connected');
-      }
+      wsDebugInfo('💬 WebSocket connected');
       this.reconnectAttempts = 0;
     };
 
@@ -69,26 +79,20 @@ class ChatWebSocketService {
         const message: WSMessage = JSON.parse(event.data);
         this.handlers.forEach(handler => handler(message));
       } catch (error) {
-        console.error('❌ Failed to parse WS message:', error);
+        wsDebugError('❌ Failed to parse WS message:', error);
       }
     };
 
     this.ws.onerror = (errorEvent) => {
-      // Silently ignore WebSocket errors if not enabled
-      if (wsDebugEnabled) {
-        if ((errorEvent as ErrorEvent).message) {
-          console.error('❌ WebSocket error:', (errorEvent as ErrorEvent).message);
-        } else {
-          console.error('❌ WebSocket error (event):', errorEvent);
-        }
+      if ((errorEvent as ErrorEvent).message) {
+        wsDebugError('❌ WebSocket error:', (errorEvent as ErrorEvent).message);
+      } else {
+        wsDebugError('❌ WebSocket error (event):', errorEvent);
       }
     };
 
     this.ws.onclose = (ev) => {
-      if (wsDebugEnabled) {
-        console.log('🔌 WebSocket disconnected', { code: (ev as CloseEvent).code, reason: (ev as CloseEvent).reason });
-      }
-      // Ne pas tenter de reconnexion si WebSocket est désactivé
+      wsDebugInfo('🔌 WebSocket disconnected', { code: (ev as CloseEvent).code, reason: (ev as CloseEvent).reason });
       if (process.env.NEXT_PUBLIC_WS_ENABLED !== 'false') {
         this.attemptReconnect();
       }
@@ -97,15 +101,13 @@ class ChatWebSocketService {
 
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ Max reconnection attempts reached');
+      wsDebugError('❌ Max reconnection attempts reached');
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * this.reconnectAttempts;
-    if (wsDebugEnabled) {
-      console.log(`🔄 Reconnecting in ${delay}ms...`);
-    }
+    wsDebugInfo(`🔄 Reconnecting in ${delay}ms...`);
 
     this.reconnectTimeout = setTimeout(() => {
       this.connect();
@@ -127,9 +129,7 @@ class ChatWebSocketService {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
-      if (wsDebugEnabled) {
-        console.warn('⚠️ WebSocket not connected');
-      }
+      wsDebugWarn('⚠️ WebSocket not connected');
     }
   }
 

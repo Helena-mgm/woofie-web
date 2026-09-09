@@ -27,7 +27,7 @@ class Message
     private string $content;
 
     #[ORM\Column(type: 'string', length: 20)]
-    private string $type = 'text'; // text, image, file, audio, video, bot
+    private string $type = 'text';
 
     #[ORM\Column(type: 'datetime')]
     private \DateTimeInterface $createdAt;
@@ -35,17 +35,11 @@ class Message
     #[ORM\Column(type: 'boolean')]
     private bool $isRead = false;
 
-    // TODO: Uncomment when reply_to column is added to database
-    // #[ORM\ManyToOne(targetEntity: Message::class)]
-    // #[ORM\JoinColumn(onDelete: 'SET NULL')]
-    // private ?Message $replyTo = null;
-
     public function __construct()
     {
         $this->createdAt = new \DateTime();
     }
 
-    // Getters & Setters
     public function getId(): ?int { return $this->id; }
     public function getConversation(): Conversation { return $this->conversation; }
     public function setConversation(Conversation $conversation): self { 
@@ -61,7 +55,4 @@ class Message
     public function getCreatedAt(): \DateTimeInterface { return $this->createdAt; }
     public function isRead(): bool { return $this->isRead; }
     public function setIsRead(bool $isRead): self { $this->isRead = $isRead; return $this; }
-    // TODO: Uncomment when reply_to column is added
-    // public function getReplyTo(): ?Message { return $this->replyTo; }
-    // public function setReplyTo(?Message $replyTo): self { $this->replyTo = $replyTo; return $this; }
 }

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Repository\PointOfInterestRepository;
 use App\Service\OverpassImporter;
+use App\Service\LoginRateLimiter;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,6 +17,7 @@ class PoiController extends AbstractController
     public function __construct(
         private readonly PointOfInterestRepository $poiRepository,
         private readonly OverpassImporter $overpassImporter,
+        private readonly LoginRateLimiter $rateLimiter,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -31,12 +33,33 @@ class PoiController extends AbstractController
             return $this->json(['error' => 'Missing bounds parameters'], Response::HTTP_BAD_REQUEST);
         }
 
-        $bounds = [
-            'south' => (float) $south,
-            'west' => (float) $west,
-            'north' => (float) $north,
-            'east' => (float) $east,
-        ];
+        $rawBounds = compact('south', 'west', 'north', 'east');
+        foreach ($rawBounds as $value) {
+            if (!is_scalar($value) || !is_numeric((string) $value)) {
+                return $this->json(['error' => 'Invalid bounds parameters'], Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        $bounds = array_map(static fn(mixed $value): float => (float) $value, $rawBounds);
+        if (!is_finite($bounds['south']) || !is_finite($bounds['west'])
+            || !is_finite($bounds['north']) || !is_finite($bounds['east'])
+            || $bounds['south'] < -90 || $bounds['north'] > 90
+            || $bounds['west'] < -180 || $bounds['east'] > 180
+            || $bounds['south'] >= $bounds['north'] || $bounds['west'] >= $bounds['east']) {
+            return $this->json(['error' => 'Invalid bounds parameters'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (($bounds['north'] - $bounds['south']) > 2 || ($bounds['east'] - $bounds['west']) > 2) {
+            return $this->json(['error' => 'Requested area is too large; zoom in and retry'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($retryAfter = $this->rateLimiter->assertPoiAllowed((string) $request->getClientIp())) {
+            return $this->json(
+                ['error' => 'Too many map requests'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+                ['Retry-After' => (string) $retryAfter]
+            );
+        }
 
         $results = $this->fetchFromCache($bounds['south'], $bounds['west'], $bounds['north'], $bounds['east']);
 

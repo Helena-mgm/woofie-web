@@ -8,9 +8,8 @@ use App\Entity\ForbiddenKeyword;
 use App\Repository\UserRepository;
 use App\Repository\SitterRepository;
 use App\Repository\ForbiddenKeywordRepository;
+use App\Service\JwtService;
 use Doctrine\ORM\EntityManagerInterface;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,38 +19,13 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/admin')]
 class AdminController extends AbstractController
 {
-    private string $jwtKey;
-
-    public function __construct()
+    public function __construct(private JwtService $jwtService)
     {
-        $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
 
-    private function decodeToken(Request $request): ?object
+    private function requireAdmin(Request $request): ?User
     {
-        $authHeader = $request->headers->get('Authorization');
-
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return null;
-        }
-
-        $token = substr($authHeader, 7);
-
-        try {
-            return JWT::decode($token, new Key($this->jwtKey, 'HS256'));
-        } catch (\Throwable $e) {
-            return null;
-        }
-    }
-
-    private function requireAdmin(Request $request, UserRepository $userRepo): ?User
-    {
-        $decoded = $this->decodeToken($request);
-        if (!$decoded) {
-            return null;
-        }
-
-        $user = $userRepo->find($decoded->sub);
+        $user = $this->jwtService->getUserFromRequest($request);
         if (!$user) {
             return null;
         }
@@ -63,10 +37,10 @@ class AdminController extends AbstractController
         return $user;
     }
 
-    #[Route('/users/{id}/role', methods: ['POST'])]
+    #[Route('/users/{id}/role', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function changeUserRole(int $id, Request $request, UserRepository $userRepo, EntityManagerInterface $em): JsonResponse
     {
-        $admin = $this->requireAdmin($request, $userRepo);
+        $admin = $this->requireAdmin($request);
         if (!$admin) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
@@ -77,9 +51,19 @@ class AdminController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        $roles = $data['roles'] ?? null;
+        $roles = is_array($data) ? ($data['roles'] ?? null) : null;
         if (!is_array($roles)) {
             return $this->json(['error' => 'roles must be array'], 400);
+        }
+
+        $allowedRoles = ['ROLE_USER', 'ROLE_ADMIN'];
+        if (count($roles) > count($allowedRoles) || array_filter($roles, static fn(mixed $role): bool => !is_string($role) || !in_array($role, $allowedRoles, true))) {
+            return $this->json(['error' => 'Unsupported role'], 400);
+        }
+
+        $roles = array_values(array_unique($roles));
+        if ($target->getId() === $admin->getId() && !in_array('ROLE_ADMIN', $roles, true)) {
+            return $this->json(['error' => 'An administrator cannot revoke their own access'], 409);
         }
 
         $target->setRoles($roles);
@@ -88,10 +72,10 @@ class AdminController extends AbstractController
         return $this->json(['success' => true, 'roles' => $target->getRoles()]);
     }
 
-    #[Route('/users/{id}/verify', methods: ['POST'])]
+    #[Route('/users/{id}/verify', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function verifyUser(int $id, Request $request, UserRepository $userRepo, EntityManagerInterface $em): JsonResponse
     {
-        $admin = $this->requireAdmin($request, $userRepo);
+        $admin = $this->requireAdmin($request);
         if (!$admin) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
@@ -102,17 +86,20 @@ class AdminController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        $isVerified = filter_var($data['is_verified'] ?? true, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        $target->setIsVerified((bool)$isVerified);
+        $isVerified = is_array($data) ? ($data['is_verified'] ?? true) : null;
+        if (!is_bool($isVerified)) {
+            return $this->json(['error' => 'is_verified must be boolean'], 400);
+        }
+        $target->setIsVerified($isVerified);
         $em->flush();
 
         return $this->json(['success' => true, 'is_verified' => $target->isVerified()]);
     }
 
-    #[Route('/sitters/{id}/verify', methods: ['POST'])]
-    public function verifySitter(int $id, Request $request, UserRepository $userRepo, SitterRepository $sitterRepo, EntityManagerInterface $em): JsonResponse
+    #[Route('/sitters/{id}/verify', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function verifySitter(int $id, Request $request, SitterRepository $sitterRepo, EntityManagerInterface $em): JsonResponse
     {
-        $admin = $this->requireAdmin($request, $userRepo);
+        $admin = $this->requireAdmin($request);
         if (!$admin) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
@@ -123,8 +110,11 @@ class AdminController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        $isVerified = filter_var($data['is_verified'] ?? true, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        $sitter->setIsVerified((bool)$isVerified);
+        $isVerified = is_array($data) ? ($data['is_verified'] ?? true) : null;
+        if (!is_bool($isVerified)) {
+            return $this->json(['error' => 'is_verified must be boolean'], 400);
+        }
+        $sitter->setIsVerified($isVerified);
         $sitter->setVerifiedAt($isVerified ? new \DateTimeImmutable() : null);
         $em->flush();
 
@@ -132,9 +122,9 @@ class AdminController extends AbstractController
     }
 
     #[Route('/forbidden_keywords', methods: ['GET'])]
-    public function listKeywords(Request $request, UserRepository $userRepo, ForbiddenKeywordRepository $forbiddenRepo): JsonResponse
+    public function listKeywords(Request $request, ForbiddenKeywordRepository $forbiddenRepo): JsonResponse
     {
-        $admin = $this->requireAdmin($request, $userRepo);
+        $admin = $this->requireAdmin($request);
         if (!$admin) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
@@ -143,16 +133,18 @@ class AdminController extends AbstractController
     }
 
     #[Route('/forbidden_keywords', methods: ['POST'])]
-    public function addKeyword(Request $request, UserRepository $userRepo, ForbiddenKeywordRepository $forbiddenRepo, EntityManagerInterface $em): JsonResponse
+    public function addKeyword(Request $request, ForbiddenKeywordRepository $forbiddenRepo, EntityManagerInterface $em): JsonResponse
     {
-        $admin = $this->requireAdmin($request, $userRepo);
+        $admin = $this->requireAdmin($request);
         if (!$admin) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
 
         $data = json_decode($request->getContent(), true);
-        $kw = trim((string)($data['keyword'] ?? ''));
-        if ($kw === '') {
+        $kw = is_array($data) && is_string($data['keyword'] ?? null)
+            ? mb_strtolower(trim($data['keyword']))
+            : '';
+        if ($kw === '' || mb_strlen($kw) > 255) {
             return $this->json(['error' => 'keyword is required'], 400);
         }
 
@@ -169,10 +161,10 @@ class AdminController extends AbstractController
         return $this->json(['success' => true, 'keyword' => $kw], 201);
     }
 
-    #[Route('/forbidden_keywords/{id}', methods: ['DELETE'])]
-    public function deleteKeyword(int $id, Request $request, UserRepository $userRepo, EntityManagerInterface $em): JsonResponse
+    #[Route('/forbidden_keywords/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteKeyword(int $id, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $admin = $this->requireAdmin($request, $userRepo);
+        $admin = $this->requireAdmin($request);
         if (!$admin) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
@@ -191,15 +183,15 @@ class AdminController extends AbstractController
     #[Route('/message', methods: ['POST'])]
     public function sendMessageAsAdmin(Request $request, UserRepository $userRepo, EntityManagerInterface $em): JsonResponse
     {
-        $admin = $this->requireAdmin($request, $userRepo);
+        $admin = $this->requireAdmin($request);
         if (!$admin) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
 
         $data = json_decode($request->getContent(), true);
-        $toId = $data['to'] ?? null;
-        $content = trim((string)($data['content'] ?? ''));
-        if (!$toId || $content === '') {
+        $toId = is_array($data) ? filter_var($data['to'] ?? null, FILTER_VALIDATE_INT) : false;
+        $content = is_array($data) && is_string($data['content'] ?? null) ? trim($data['content']) : '';
+        if ($toId === false || $toId < 1 || $content === '' || mb_strlen($content) > 5000) {
             return $this->json(['error' => 'to and content required'], 400);
         }
 
@@ -208,16 +200,13 @@ class AdminController extends AbstractController
             return $this->json(['error' => 'Recipient not found'], 404);
         }
 
-        // Create or reuse a direct conversation
         $convRepo = $em->getRepository(\App\Entity\Conversation::class);
         $conversation = null;
-        if ($convRepo) {
-            $conversations = $convRepo->findByUser($admin);
-            foreach ($conversations as $c) {
-                if ($c->getType() === 'direct' && $c->getParticipants()->contains($recipient)) {
-                    $conversation = $c;
-                    break;
-                }
+        $conversations = $convRepo->findByUser($admin);
+        foreach ($conversations as $candidate) {
+            if ($candidate->getType() === 'direct' && $candidate->getParticipants()->count() === 2 && $candidate->getParticipants()->contains($recipient)) {
+                $conversation = $candidate;
+                break;
             }
         }
 

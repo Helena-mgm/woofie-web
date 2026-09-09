@@ -12,7 +12,7 @@ class Group
 {
     #[ORM\Id]
     #[ORM\Column(type: 'integer')]
-    private int $id; // Same as conversation_id
+    private int $id;
 
     #[ORM\OneToOne(targetEntity: Conversation::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -39,7 +39,6 @@ class Group
         $this->members = new ArrayCollection();
     }
 
-    // Getters & Setters
     public function getId(): int { return $this->id; }
     public function setId(int $id): self { $this->id = $id; return $this; }
     public function getConversation(): Conversation { return $this->conversation; }

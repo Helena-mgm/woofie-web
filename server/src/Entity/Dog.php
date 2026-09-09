@@ -57,7 +57,6 @@ class Dog
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $photoPath = null;
 
-    // ── Alertes chien perdu (§3.6 CdCF) ────────────────────────────────────
     #[ORM\Column(type: 'boolean')]
     private bool $isLost = false;
 
@@ -253,9 +252,17 @@ class Dog
             'lostContact'     => $this->lostContact,
             'lostDescription' => $this->lostDescription,
             'ownerName'       => $this->owner?->getFullName(),
-            'ownerId'         => $this->owner?->getId(),
+            'ownerId'         => $this->owner?->getUser()->getId(),
             'createdAt'       => $this->createdAt->format('c'),
         ];
+    }
+
+    public function toPublicArray(): array
+    {
+        $data = $this->toArray();
+        unset($data['icadNumber'], $data['icadType']);
+
+        return $data;
     }
 
     /**

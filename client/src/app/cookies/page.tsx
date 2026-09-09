@@ -1,18 +1,37 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function CookiesPage() {
   const [preferences, setPreferences] = useState({
-    essential: true, // Always required
+    essential: true,
     analytics: false,
     marketing: false,
     preferences: false,
   });
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const storedPreferences = localStorage.getItem('woofie_cookie_preferences');
+    if (!storedPreferences) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(storedPreferences) as Partial<typeof preferences>;
+      setPreferences((current) => ({
+        ...current,
+        ...parsed,
+        essential: true,
+      }));
+    } catch {
+      localStorage.removeItem('woofie_cookie_preferences');
+    }
+  }, []);
 
   const handleToggle = (category: string) => {
-    if (category === 'essential') return; // Can't disable essential cookies
+    if (category === 'essential') return;
     setPreferences({
       ...preferences,
       [category]: !preferences[category as keyof typeof preferences],
@@ -20,8 +39,9 @@ export default function CookiesPage() {
   };
 
   const handleSavePreferences = () => {
-    // Save preferences to localStorage or backend
-    alert('Préférences enregistrées avec succès !');
+    localStorage.setItem('woofie_cookie_preferences', JSON.stringify(preferences));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   const cookieTypes = [
@@ -77,7 +97,6 @@ export default function CookiesPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -100,7 +119,6 @@ export default function CookiesPage() {
           </p>
         </motion.div>
 
-        {/* Introduction */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -114,7 +132,6 @@ export default function CookiesPage() {
           </p>
         </motion.div>
 
-        {/* Cookie Preferences */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -178,9 +195,13 @@ export default function CookiesPage() {
           >
             Enregistrer mes Préférences
           </motion.button>
+          {saved && (
+            <p className="mt-3 text-center text-sm font-semibold text-green-700">
+              Préférences enregistrées.
+            </p>
+          )}
         </motion.div>
 
-        {/* Information Sections */}
         <div className="space-y-6 mb-12">
           {sections.map((section, index) => (
             <motion.div
@@ -201,7 +222,6 @@ export default function CookiesPage() {
           ))}
         </div>
 
-        {/* Browser Settings */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -235,7 +255,6 @@ export default function CookiesPage() {
           </div>
         </motion.div>
 
-        {/* Contact */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

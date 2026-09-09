@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { APP_CONFIG } from '@/infrastructure/config/constants';
 
 export default function SupportPage() {
   const [formData, setFormData] = useState({
@@ -17,7 +18,6 @@ export default function SupportPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simuler l'envoi
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 5000);
   };
@@ -32,7 +32,6 @@ export default function SupportPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -56,7 +55,6 @@ export default function SupportPage() {
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-8 mb-12">
-          {/* Quick Help Cards */}
           {[
             {
               icon: '📚',
@@ -66,15 +64,15 @@ export default function SupportPage() {
             },
             {
               icon: '💬',
-              title: 'Chat en Direct',
-              description: 'Réponse en quelques minutes',
-              link: '#',
+              title: 'Formulaire support',
+              description: 'Préparez votre demande',
+              link: '#support-form',
             },
             {
               icon: '📧',
               title: 'Email Support',
-              description: 'support@woofie.com',
-              link: 'mailto:support@woofie.com',
+              description: APP_CONFIG.supportEmail,
+              link: `mailto:${APP_CONFIG.supportEmail}`,
             },
           ].map((card, index) => (
             <motion.a
@@ -97,8 +95,8 @@ export default function SupportPage() {
           ))}
         </div>
 
-        {/* Support Form */}
         <motion.div
+          id="support-form"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
@@ -116,15 +114,14 @@ export default function SupportPage() {
             >
               <div className="text-7xl mb-4">✅</div>
               <h3 className="text-2xl font-bold text-green-600 mb-2">
-                Demande envoyée avec succès !
+                Formulaire non connecté
               </h3>
               <p className="text-gray-600">
-                Notre équipe vous répondra dans les plus brefs délais.
+                Le module backend n’est pas encore branché. Envoyez votre demande à {APP_CONFIG.supportEmail}.
               </p>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name and Email */}
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -156,7 +153,6 @@ export default function SupportPage() {
                 </div>
               </div>
 
-              {/* Category and Priority */}
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -196,7 +192,6 @@ export default function SupportPage() {
                 </div>
               </div>
 
-              {/* Subject */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Sujet *
@@ -212,7 +207,6 @@ export default function SupportPage() {
                 />
               </div>
 
-              {/* Message */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Description détaillée *
@@ -228,7 +222,6 @@ export default function SupportPage() {
                 />
               </div>
 
-              {/* Submit Button */}
               <motion.button
                 type="submit"
                 whileHover={{ scale: 1.02 }}
@@ -241,7 +234,6 @@ export default function SupportPage() {
           )}
         </motion.div>
 
-        {/* Response Times */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

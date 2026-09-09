@@ -1,5 +1,5 @@
 # === Builder ===
-FROM node:20-bullseye AS builder
+FROM node:22-bullseye AS builder
 WORKDIR /app
 
 # Arguments de build (baked into the client bundle at compile time)
@@ -17,7 +17,7 @@ RUN npm run build
 # === Runner (production — Next.js standalone) ===
 # next.config.ts → output: 'standalone' génère .next/standalone/server.js
 # Ce mode est recommandé en prod : image plus légère, démarrage plus rapide
-FROM node:20-bullseye-slim AS runner
+FROM node:22-bullseye-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -32,4 +32,3 @@ COPY --from=builder /app/public           ./public
 
 EXPOSE 3000
 CMD ["node", "server.js"]
-

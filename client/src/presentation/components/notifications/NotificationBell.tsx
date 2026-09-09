@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Bell, X, Check, CheckCheck, Trash2 } from 'lucide-react';
 import { useNotifications, type AppNotification } from '@/presentation/hooks/useNotifications';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -25,7 +24,6 @@ const TYPE_ICON: Record<AppNotification['type'], string> = {
   event_rejected: '❌',
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
 
 export default function NotificationBell() {
   const { notifications, unreadCount, markRead, markAllRead, deleteNotification } =
@@ -65,7 +63,6 @@ export default function NotificationBell() {
   return (
     <div className="relative" ref={wrapRef}>
 
-      {/* ── Bell button ─────────────────────────────────────────────────── */}
       <button
         onClick={() => setOpen(v => !v)}
         className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B6B]"
@@ -79,7 +76,6 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* ── Mobile backdrop ─────────────────────────────────────────────── */}
       <div
         onClick={() => setOpen(false)}
         className={`min-[1200px]:hidden fixed inset-0 z-[59] bg-black/50 transition-opacity duration-200 ${
@@ -87,7 +83,6 @@ export default function NotificationBell() {
         }`}
       />
 
-      {/* ── Panel (bottom sheet on mobile / dropdown on desktop) ─────────── */}
       <div
         className={`
           fixed inset-x-0 bottom-0 z-[60] flex flex-col
@@ -104,12 +99,10 @@ export default function NotificationBell() {
         `}
         style={open ? undefined : { pointerEvents: 'none' }}
       >
-        {/* Drag handle (mobile only) */}
         <div className="flex justify-center pt-3 pb-1 min-[1200px]:hidden shrink-0">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
           <span className="font-semibold text-gray-800 text-sm flex items-center gap-2">
             Notifications
@@ -138,7 +131,6 @@ export default function NotificationBell() {
           </div>
         </div>
 
-        {/* List */}
         <div className="overflow-y-auto flex-1 divide-y divide-gray-50 overscroll-contain">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
@@ -159,14 +151,12 @@ export default function NotificationBell() {
           )}
         </div>
 
-        {/* Safe area spacer (mobile home indicator) */}
         <div className="shrink-0 h-[env(safe-area-inset-bottom,0px)] min-[1200px]:hidden" />
       </div>
     </div>
   );
 }
 
-// ── Row ───────────────────────────────────────────────────────────────────────
 
 function NotificationRow({
   notification: n,
@@ -188,13 +178,10 @@ function NotificationRow({
           : 'bg-orange-50/60 hover:bg-orange-100/60'
       }`}
     >
-      {/* Unread dot */}
       <span className={`shrink-0 mt-2 w-2 h-2 rounded-full ${n.isRead ? 'bg-transparent' : 'bg-[#FF6B6B]'}`} />
 
-      {/* Icon */}
       <span className="text-xl shrink-0 mt-0.5">{TYPE_ICON[n.type]}</span>
 
-      {/* Text */}
       <div className="flex-1 min-w-0">
         <p className={`text-sm leading-snug ${n.isRead ? 'text-gray-600' : 'text-gray-900 font-semibold'}`}>
           {n.title}
@@ -203,7 +190,6 @@ function NotificationRow({
         <p className="text-[11px] text-gray-400 mt-1">{timeAgo(n.createdAt)}</p>
       </div>
 
-      {/* Action buttons (tap-friendly on mobile) */}
       <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         {!n.isRead && (
           <button

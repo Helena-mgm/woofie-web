@@ -155,7 +155,6 @@ export function SitterOfferModal({ onClose, onSuccess }: SitterOfferModalProps) 
       }}
     >
       <div className="w-full max-h-[92dvh] overflow-y-auto rounded-t-3xl bg-white px-6 py-8 shadow-2xl sm:max-w-2xl sm:rounded-3xl">
-        {/* Header */}
         <header className="mb-6 flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-bold text-[#8B4513]">
@@ -198,7 +197,6 @@ export function SitterOfferModal({ onClose, onSuccess }: SitterOfferModalProps) 
               </div>
             )}
 
-            {/* Bio */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#8B4513]">
                 Présentation <span className="text-red-500">*</span>
@@ -219,7 +217,6 @@ export function SitterOfferModal({ onClose, onSuccess }: SitterOfferModalProps) 
               </div>
             </div>
 
-            {/* Services */}
             <div className="space-y-3">
               <p className="text-sm font-medium text-[#8B4513]">
                 Services proposés{" "}
@@ -252,7 +249,6 @@ export function SitterOfferModal({ onClose, onSuccess }: SitterOfferModalProps) 
               )}
             </div>
 
-            {/* Champs numériques */}
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label="Tarif horaire (€) *"
@@ -304,7 +300,6 @@ export function SitterOfferModal({ onClose, onSuccess }: SitterOfferModalProps) 
               />
             </div>
 
-            {/* Disponibilité */}
             <div className="rounded-2xl border border-[#F1E5D4] bg-[#FFF8EF] px-4 py-3">
               <label className="flex items-center gap-3 text-sm font-semibold text-[#8B4513] cursor-pointer">
                 <input
@@ -326,7 +321,6 @@ export function SitterOfferModal({ onClose, onSuccess }: SitterOfferModalProps) 
               </p>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button type="button" variant="secondary" onClick={onClose}>
                 Annuler

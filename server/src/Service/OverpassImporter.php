@@ -68,27 +68,46 @@ class OverpassImporter
 
         $persisted = [];
         foreach ($elements as $element) {
+            if (!is_array($element)) {
+                continue;
+            }
+
+            $rawId = $element['id'] ?? null;
+            $rawType = $element['type'] ?? null;
+            if ((!is_int($rawId) && !is_string($rawId)) || (string) $rawId === ''
+                || !is_string($rawType) || !in_array($rawType, ['node', 'way', 'relation'], true)) {
+                continue;
+            }
+
             $coords = $this->extractCoordinates($element);
             if ($coords === null) {
                 continue;
             }
-            $category = $this->resolveCategory($element['tags'] ?? []);
+            $tags = is_array($element['tags'] ?? null) ? $element['tags'] : [];
+            $category = $this->resolveCategory($tags);
             if ($category === null) {
                 continue;
             }
 
-            $poi = $this->repository->findOneBy(['osmId' => (string)($element['id'] ?? '')]);
+            $legacyOsmId = (string) $rawId;
+            $osmId = $rawType . ':' . $legacyOsmId;
+            $poi = $this->repository->findOneBy(['osmId' => $osmId])
+                ?? $this->repository->findOneBy(['osmId' => $legacyOsmId]);
             if (!$poi) {
                 $poi = new PointOfInterest();
-                $poi->setOsmId((string)($element['id'] ?? ''));
             }
 
+            $name = is_string($tags['name'] ?? null)
+                ? mb_substr(trim($tags['name']), 0, 255)
+                : null;
+
             $poi
-                ->setName($element['tags']['name'] ?? null)
+                ->setOsmId($osmId)
+                ->setName($name !== '' ? $name : null)
                 ->setCategory($category)
                 ->setLatitude($coords['lat'])
                 ->setLongitude($coords['lon'])
-                ->setTags($element['tags'] ?? null)
+                ->setTags($tags ?: null)
                 ->touch();
 
             $this->repository->upsert($poi);
@@ -141,20 +160,20 @@ class OverpassImporter
     private function extractCoordinates(array $element): ?array
     {
         if (isset($element['lat'], $element['lon'])) {
-            return ['lat' => (float)$element['lat'], 'lon' => (float)$element['lon']];
+            return $this->validCoordinates($element['lat'], $element['lon']);
         }
 
         if (isset($element['center']['lat'], $element['center']['lon'])) {
-            return ['lat' => (float)$element['center']['lat'], 'lon' => (float)$element['center']['lon']];
+            return $this->validCoordinates($element['center']['lat'], $element['center']['lon']);
         }
 
         if (!empty($element['bounds'])) {
             $bounds = $element['bounds'];
             if (isset($bounds['minlat'], $bounds['maxlat'], $bounds['minlon'], $bounds['maxlon'])) {
-                return [
-                    'lat' => ((float)$bounds['minlat'] + (float)$bounds['maxlat']) / 2,
-                    'lon' => ((float)$bounds['minlon'] + (float)$bounds['maxlon']) / 2,
-                ];
+                return $this->validCoordinates(
+                    ((float)$bounds['minlat'] + (float)$bounds['maxlat']) / 2,
+                    ((float)$bounds['minlon'] + (float)$bounds['maxlon']) / 2
+                );
             }
         }
 
@@ -171,14 +190,27 @@ class OverpassImporter
             }
 
             if ($count > 0) {
-                return [
-                    'lat' => $totalLat / $count,
-                    'lon' => $totalLon / $count,
-                ];
+                return $this->validCoordinates($totalLat / $count, $totalLon / $count);
             }
         }
 
         return null;
+    }
+
+    /** @return array{lat: float, lon: float}|null */
+    private function validCoordinates(mixed $latitude, mixed $longitude): ?array
+    {
+        if (!is_numeric($latitude) || !is_numeric($longitude)) {
+            return null;
+        }
+
+        $lat = (float) $latitude;
+        $lon = (float) $longitude;
+        if (!is_finite($lat) || !is_finite($lon) || $lat < -90 || $lat > 90 || $lon < -180 || $lon > 180) {
+            return null;
+        }
+
+        return ['lat' => $lat, 'lon' => $lon];
     }
 
     /**
@@ -195,4 +227,3 @@ class OverpassImporter
         };
     }
 }
-

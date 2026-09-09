@@ -9,13 +9,10 @@ import { DogCard } from '@/presentation/components/profile/DogCard';
 import { SitterServices } from '@/presentation/components/profile/SitterServices';
 import { useProfile } from '@/presentation/hooks/useProfile';
 
-/**
- * Instagram-like Profile Page
- * Rule: < 80 lines, clean design
- */
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const userId = parseInt(resolvedParams.id);
+  const parsedUserId = Number.parseInt(resolvedParams.id, 10);
+  const userId = Number.isInteger(parsedUserId) && parsedUserId > 0 ? parsedUserId : null;
   const { profile, loading, error } = useProfile(userId);
 
   if (loading) {
@@ -52,15 +49,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     <ProtectRoute>
       <div className="min-h-screen bg-white">
         <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Instagram-style Header */}
           <ProfileHeader profile={profile} />
 
-          {/* Owner dogs list */}
           {profile.type === 'owner' && profile.dogs && profile.dogs.length > 0 && (
             <DogList dogs={profile.dogs} />
           )}
 
-          {/* Sitter services overview */}
           {profile.type === 'sitter' && (
             <SitterServices
               bio={profile.bio}
@@ -73,7 +67,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             />
           )}
 
-          {/* Tabs - Instagram style */}
           <div className="flex justify-center gap-12 mt-8 border-b border-gray-200">
             <button className="pb-4 border-t border-gray-900 text-sm font-semibold text-gray-900 flex items-center gap-2">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -86,7 +79,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             </button>
           </div>
 
-          {/* Dogs Grid - Instagram style (3 columns) */}
           {profile.type === 'owner' && profile.dogs && profile.dogs.length > 0 ? (
             <motion.div
               initial={{ opacity: 0 }}

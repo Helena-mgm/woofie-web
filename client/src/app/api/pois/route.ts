@@ -6,16 +6,25 @@ const buildBackendCandidates = (): string[] => {
     process.env.NEXT_PUBLIC_API_BASE,
     process.env.NEXT_PUBLIC_API_URL,
     process.env.API_BASE,
-    'http://localhost:8000',
-    'http://nginx',
   ].filter((value): value is string => Boolean(value));
 
-  // Remove duplicates while preserving order
   return Array.from(new Set(candidates));
 };
 
 export async function GET(request: NextRequest) {
   const candidates = buildBackendCandidates();
+  if (candidates.length === 0) {
+    return NextResponse.json(
+      { error: 'Backend API base URL is not configured' },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    );
+  }
+
   const url = new URL(request.url);
   const search = url.searchParams.toString();
   const pathAndQuery = `/api/pois${search ? `?${search}` : ''}`;
@@ -31,7 +40,6 @@ export async function GET(request: NextRequest) {
         headers: {
           Accept: 'application/json',
         },
-        // Always bypass caching for live POI data
         cache: 'no-store',
       });
 
@@ -54,7 +62,6 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       lastError = error;
-      // Try the next backend candidate
     }
   }
 
@@ -69,4 +76,3 @@ export async function GET(request: NextRequest) {
     },
   );
 }
-

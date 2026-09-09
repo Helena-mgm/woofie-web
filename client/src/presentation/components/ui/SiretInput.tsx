@@ -16,6 +16,7 @@ export interface SiretInputProps extends Omit<InputHTMLAttributes<HTMLInputEleme
  * - Affiche le nom de l'entreprise si trouvée
  */
 const SIRET_CHECK_ENABLED = process.env.NEXT_PUBLIC_SIRET_CHECK !== 'false';
+const SIRET_DEBUG_ENABLED = process.env.NEXT_PUBLIC_SIRET_DEBUG === 'true';
 
 export const SiretInput = memo(
   forwardRef<HTMLInputElement, SiretInputProps>(function SiretInput(
@@ -25,7 +26,6 @@ export const SiretInput = memo(
     const [validationResult, setValidationResult] = useState<SiretValidationResult | null>(null);
     const [isValidating, setIsValidating] = useState(false);
 
-    // Valide le SIRET avec un debounce
     useEffect(() => {
       const siret = value as string;
       
@@ -36,13 +36,11 @@ export const SiretInput = memo(
 
       const normalized = normalizeSiret(siret);
       
-      // Seulement valider si on a 14 chiffres
       if (normalized.length !== 14) {
         setValidationResult(null);
         return;
       }
 
-      // Debounce de 500ms
       const timeoutId = setTimeout(async () => {
         setIsValidating(true);
         
@@ -51,7 +49,14 @@ export const SiretInput = memo(
           setValidationResult(result);
           onValidation?.(result);
         } catch (err) {
-          console.error('Erreur validation SIRET:', err);
+          if (SIRET_DEBUG_ENABLED) {
+            console.error('Erreur validation SIRET:', err);
+          }
+          setValidationResult({
+            isValid: false,
+            formatted: siret,
+            message: 'Erreur lors de la validation du SIRET',
+          });
         } finally {
           setIsValidating(false);
         }
@@ -61,16 +66,9 @@ export const SiretInput = memo(
     }, [value, onValidation]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // Garde uniquement les chiffres
       const cleaned = e.target.value.replace(/\D/g, '');
-      
-      // Limite à 14 chiffres
       const limited = cleaned.substring(0, 14);
-      
-      // Formate automatiquement
       const formatted = formatSiret(limited);
-      
-      // Créer un nouvel événement avec la valeur formatée
       const syntheticEvent = {
         ...e,
         target: {
@@ -82,7 +80,6 @@ export const SiretInput = memo(
       onChange?.(syntheticEvent);
     };
 
-    // Déterminer le style de la bordure selon la validation
     const getBorderColor = () => {
       if (error) return 'border-red-500 focus:border-red-600';
       if (validationResult?.isValid && validationResult.exists) {
@@ -97,7 +94,6 @@ export const SiretInput = memo(
       return 'border-[#D2691E]/30 focus:border-[#D2691E]';
     };
 
-    // Icône de statut
     const getStatusIcon = () => {
       if (isValidating) {
         return <span className="text-blue-500 animate-spin">⌛</span>;
@@ -141,13 +137,11 @@ export const SiretInput = memo(
             {...props}
           />
           
-          {/* Icône de statut */}
           <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xl">
             {getStatusIcon()}
           </div>
         </div>
 
-        {/* Message de validation */}
         {validationResult?.message && !error && (
           <p className={`mt-1 text-xs ${
             validationResult.isValid && validationResult.exists
@@ -160,17 +154,14 @@ export const SiretInput = memo(
           </p>
         )}
 
-        {/* Texte d'aide */}
         {helperText && !error && !validationResult?.message && (
           <p className="mt-1 text-xs text-[#8B4513]/60">{helperText}</p>
         )}
 
-        {/* Erreur */}
         {error && (
           <p className="mt-1 text-xs text-red-500">{error}</p>
         )}
 
-        {/* Information sur la vérification */}
         {SIRET_CHECK_ENABLED && validationResult?.isValid && !validationResult.exists && (
           <p className="mt-2 text-xs text-[#8B4513]/70 bg-orange-50 p-2 rounded border border-orange-200">
             ℹ️ SIRET valide mais non vérifié par l&apos;API Sirene. Un administrateur devra valider votre compte manuellement.

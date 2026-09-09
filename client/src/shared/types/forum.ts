@@ -1,7 +1,3 @@
-/**
- * Types pour le forum / réseau social Woofie
- */
-
 export interface Dog {
   id: number;
   name: string;
@@ -14,7 +10,7 @@ export interface Dog {
 
 export interface User {
   id: number;
-  email: string;
+  email?: string;
   nom: string;
   prenom?: string;
   photo_path?: string;
@@ -27,7 +23,7 @@ export interface User {
 
 export interface DogSitter extends User {
   type: 'dogsitter';
-  user_id?: number; // ID de l'entité User (utilisé pour les conversations)
+  user_id?: number;
   rating?: number;
   reviews_count?: number;
   price_per_hour?: number;
@@ -42,14 +38,14 @@ export interface Post {
   user: User;
   content: string;
   images?: string[];
-  dogs?: Dog[]; // Chiens mentionnés dans le post
+  dogs?: Dog[];
   created_at: string;
   likes_count: number;
   comments_count: number;
   shares_count: number;
   is_liked?: boolean;
   is_saved?: boolean;
-  comments?: Comment[]; // Ajout des commentaires
+  comments?: Comment[];
 }
 
 export interface Comment {
@@ -60,9 +56,9 @@ export interface Comment {
   created_at: string;
   likes_count?: number;
   is_liked?: boolean;
-  replies?: Comment[]; // Nested replies
-  parent_id?: number; // Reference to parent comment
-  parent?: Comment; // Parent comment data for @mention
+  replies?: Comment[];
+  parent_id?: number;
+  parent?: Comment;
 }
 
 export interface PostFilters {

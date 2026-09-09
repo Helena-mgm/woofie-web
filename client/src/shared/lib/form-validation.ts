@@ -2,10 +2,6 @@ import { VALIDATION } from '@/infrastructure/config/constants';
 import { validateIcadNumber } from '@/shared/lib/icad-validator';
 import type { OwnerRegisterFormData, SitterRegisterFormData } from '@/types';
 
-/**
- * Validation du formulaire Owner
- * Règle: fonction pure, < 50 lignes
- */
 export function validateOwnerForm(data: OwnerRegisterFormData): Record<string, string> {
   const errors: Record<string, string> = {};
 
@@ -102,10 +98,6 @@ export function validateOwnerForm(data: OwnerRegisterFormData): Record<string, s
   return errors;
 }
 
-/**
- * Validation du formulaire Sitter
- * Règle: fonction pure, < 50 lignes
- */
 export function validateSitterForm(data: SitterRegisterFormData): Record<string, string> {
   const errors: Record<string, string> = {};
 

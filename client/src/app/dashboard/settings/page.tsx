@@ -7,13 +7,13 @@ import { ProtectRoute } from '@/features/security/ProtectRoute';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { apiRequest, tokenManager } from '@/shared/lib/api';
 
-// ── Delete Account Modal ──────────────────────────────────────────────────────
 
 function DeleteAccountModal({ onClose }: { onClose: () => void }) {
   const { user }     = useAuth();
   const router       = useRouter();
   const [step, setStep]         = useState<1 | 2>(1);
   const [confirm, setConfirm]   = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy]         = useState(false);
   const [error, setError]       = useState<string | null>(null);
 
@@ -27,7 +27,10 @@ function DeleteAccountModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await apiRequest('/api/account', { method: 'DELETE' });
+      const res = await apiRequest('/api/account', {
+        method: 'DELETE',
+        body: JSON.stringify({ password }),
+      });
       if (res.ok) {
         tokenManager.remove();
         router.push('/?deleted=1');
@@ -47,7 +50,6 @@ function DeleteAccountModal({ onClose }: { onClose: () => void }) {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={busy ? undefined : onClose} />
       <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
 
-        {/* Header */}
         <div className="bg-red-600 px-6 py-5 flex items-center gap-3">
           <span className="text-3xl">⚠️</span>
           <div>
@@ -95,17 +97,29 @@ function DeleteAccountModal({ onClose }: { onClose: () => void }) {
                 placeholder={MAGIC}
                 autoFocus
               />
+              <label htmlFor="delete-account-password" className="block text-sm font-medium text-gray-700 mb-1">
+                Mot de passe actuel
+              </label>
+              <input
+                id="delete-account-password"
+                type="password"
+                value={password}
+                onChange={event => { setPassword(event.target.value); setError(null); }}
+                autoComplete="current-password"
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-400 mb-4"
+                required
+              />
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2.5 mb-4">{error}</p>
               )}
               <div className="flex gap-3">
-                <button onClick={() => { setStep(1); setConfirm(''); setError(null); }} disabled={busy}
+                <button onClick={() => { setStep(1); setConfirm(''); setPassword(''); setError(null); }} disabled={busy}
                   className="flex-1 px-4 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                   ← Retour
                 </button>
                 <button
                   onClick={handleDelete}
-                  disabled={busy || confirm !== MAGIC}
+                  disabled={busy || confirm !== MAGIC || password === ''}
                   className="flex-1 px-4 py-2.5 rounded-full bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-40 transition-colors"
                 >
                   {busy ? 'Suppression…' : '🗑️ Supprimer mon compte'}
@@ -119,7 +133,6 @@ function DeleteAccountModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -130,7 +143,6 @@ export default function SettingsPage() {
       <div className="min-h-screen bg-gradient-to-br from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6] py-12">
         <div className="mx-auto w-full max-w-2xl px-4 sm:px-8">
 
-          {/* Header */}
           <div className="mb-8">
             <Link href="/dashboard" className="text-sm text-[#8B4513] hover:underline">← Tableau de bord</Link>
             <h1 className="text-3xl font-bold text-[#3E2A1B] mt-2">⚙️ Paramètres du compte</h1>
@@ -139,7 +151,6 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Section: Profil */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
               <h2 className="text-base font-semibold text-gray-800">Informations du compte</h2>
@@ -163,7 +174,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Section: Données personnelles RGPD */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
               <h2 className="text-base font-semibold text-gray-800">Données personnelles (RGPD)</h2>
@@ -171,7 +181,7 @@ export default function SettingsPage() {
             <div className="p-6 space-y-4">
               <p className="text-sm text-gray-600">
                 Conformément au Règlement Général sur la Protection des Données (RGPD), vous avez le droit
-                d'accéder, de modifier et de supprimer vos données personnelles à tout moment.
+                d&apos;accéder, de modifier et de supprimer vos données personnelles à tout moment.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/privacy"
@@ -186,7 +196,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Section: Zone danger */}
           <div className="bg-white rounded-2xl shadow-sm border-2 border-red-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-red-100 bg-red-50">
               <h2 className="text-base font-semibold text-red-700">⚠️ Zone de danger</h2>

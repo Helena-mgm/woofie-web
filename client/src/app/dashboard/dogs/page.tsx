@@ -9,7 +9,6 @@ import { getImageUrl } from '@/infrastructure/config/constants';
 
 const TAILLES = ['Très petit (<5kg)', 'Petit (5-10kg)', 'Moyen (10-25kg)', 'Grand (25-40kg)', 'Très grand (>40kg)'];
 
-// ── Forms ─────────────────────────────────────────────────────────────────────
 
 interface DogFormData {
   name: string; icadNumber: string; icadType: string;
@@ -37,7 +36,6 @@ function dogToForm(d: DogProfile): DogFormData {
   };
 }
 
-// ── Dog Card ──────────────────────────────────────────────────────────────────
 
 interface DogCardProps {
   dog: DogProfile;
@@ -58,14 +56,12 @@ function DogCard({ dog, onEdit, onDelete, onMarkLost, onMarkFound }: DogCardProp
       exit={{ opacity: 0, scale: 0.9 }}
       className={`relative bg-white rounded-2xl shadow-md overflow-hidden border-2 ${dog.isLost ? 'border-red-300' : 'border-transparent'}`}
     >
-      {/* Lost badge */}
       {dog.isLost && (
         <div className="absolute top-3 left-3 z-10 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
           🚨 SIGNALÉ PERDU
         </div>
       )}
 
-      {/* Photo */}
       <div className="h-44 bg-gradient-to-br from-[#FFF2E0] to-[#FFD9A6] flex items-center justify-center overflow-hidden relative">
         {dog.photo ? (
           <Image src={getImageUrl(dog.photo)} alt={dog.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, 320px" />
@@ -74,7 +70,6 @@ function DogCard({ dog, onEdit, onDelete, onMarkLost, onMarkFound }: DogCardProp
         )}
       </div>
 
-      {/* Info */}
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
           <h3 className="text-lg font-bold text-gray-900">{dog.name}</h3>
@@ -89,7 +84,6 @@ function DogCard({ dog, onEdit, onDelete, onMarkLost, onMarkFound }: DogCardProp
         <p className="text-xs text-gray-300 mt-1">ICAD : {dog.icadNumber}</p>
       </div>
 
-      {/* Actions */}
       <div className="px-4 pb-4 flex flex-wrap gap-2">
         <button onClick={onEdit}
           className="flex-1 px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
@@ -124,7 +118,6 @@ function DogCard({ dog, onEdit, onDelete, onMarkLost, onMarkFound }: DogCardProp
   );
 }
 
-// ── Dog Form Modal ────────────────────────────────────────────────────────────
 
 interface DogFormModalProps {
   initial?: DogFormData;
@@ -169,7 +162,6 @@ function DogFormModal({ initial = emptyForm, onSave, onClose, title }: DogFormMo
           <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">&times;</button>
         </div>
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Nom */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Nom *</label>
             <input required value={form.name} onChange={e => set('name', e.target.value)}
@@ -177,7 +169,6 @@ function DogFormModal({ initial = emptyForm, onSave, onClose, title }: DogFormMo
               placeholder="Rex, Milou, Luna…" />
           </div>
 
-          {/* ICAD */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">N° ICAD *</label>
@@ -195,7 +186,6 @@ function DogFormModal({ initial = emptyForm, onSave, onClose, title }: DogFormMo
             </div>
           </div>
 
-          {/* Race + taille */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Race</label>
@@ -213,7 +203,6 @@ function DogFormModal({ initial = emptyForm, onSave, onClose, title }: DogFormMo
             </div>
           </div>
 
-          {/* Sexe + Naissance */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Sexe</label>
@@ -231,7 +220,6 @@ function DogFormModal({ initial = emptyForm, onSave, onClose, title }: DogFormMo
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
             <textarea rows={3} value={form.description} onChange={e => set('description', e.target.value)}
@@ -239,10 +227,9 @@ function DogFormModal({ initial = emptyForm, onSave, onClose, title }: DogFormMo
               placeholder="Tempérament, particularités, signes distinctifs…" />
           </div>
 
-          {/* Photo */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Photo</label>
-            <input type="file" accept="image/*" onChange={handlePhoto}
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhoto}
               className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#FFF2E0] file:text-[#8B4513] file:font-semibold hover:file:bg-[#FFE0B2]" />
           </div>
 
@@ -264,7 +251,6 @@ function DogFormModal({ initial = emptyForm, onSave, onClose, title }: DogFormMo
   );
 }
 
-// ── Lost report modal ─────────────────────────────────────────────────────────
 
 interface LostModalProps {
   dog: DogProfile;
@@ -326,7 +312,6 @@ function LostModal({ dog, onSave, onClose }: LostModalProps) {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function DogsDashboardPage() {
   const { dogs, loading, createDog, updateDog, deleteDog, markLost, markFound } = useDogs();
@@ -339,7 +324,6 @@ export default function DogsDashboardPage() {
       <div className="min-h-screen bg-gradient-to-br from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6] py-12">
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-8">
 
-          {/* Header */}
           <div className="mb-8 flex items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-[#3E2A1B]">🐕 Mes chiens</h1>
@@ -353,23 +337,20 @@ export default function DogsDashboardPage() {
             </button>
           </div>
 
-          {/* Alert strip */}
           {dogs.some(d => d.isLost) && (
             <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700">
               <span className="text-xl">🚨</span>
               <p className="text-sm font-medium">
                 Vous avez {dogs.filter(d => d.isLost).length} chien(s) signalé(s) comme perdu(s).&nbsp;
-                <a href="/lost-dogs" className="underline hover:no-underline">Voir l'alerte publique →</a>
+                <a href="/lost-dogs" className="underline hover:no-underline">Voir l&apos;alerte publique →</a>
               </p>
             </div>
           )}
 
-          {/* Loading */}
           {loading && (
             <div className="text-center py-16 text-[#8B4513] animate-pulse text-lg">Chargement…</div>
           )}
 
-          {/* Empty */}
           {!loading && dogs.length === 0 && (
             <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100">
               <div className="text-6xl mb-4">🐾</div>
@@ -382,7 +363,6 @@ export default function DogsDashboardPage() {
             </div>
           )}
 
-          {/* Grid */}
           <AnimatePresence>
             {!loading && dogs.length > 0 && (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -401,7 +381,6 @@ export default function DogsDashboardPage() {
           </AnimatePresence>
         </div>
 
-        {/* Create modal */}
         {showCreate && (
           <DogFormModal
             title="Ajouter un chien 🐾"
@@ -424,7 +403,6 @@ export default function DogsDashboardPage() {
           />
         )}
 
-        {/* Edit modal */}
         {editDog && (
           <DogFormModal
             title={`Modifier ${editDog.name}`}
@@ -446,7 +424,6 @@ export default function DogsDashboardPage() {
           />
         )}
 
-        {/* Lost modal */}
         {lostDog && (
           <LostModal
             dog={lostDog}

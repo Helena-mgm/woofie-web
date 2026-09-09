@@ -21,12 +21,7 @@ interface DogProfileHeaderProps {
   };
 }
 
-/**
- * Dog Profile Header - Same design as ProfileHeader
- * Rule: < 80 lines, Instagram style
- */
 export function DogProfileHeader({ dog, owner }: DogProfileHeaderProps) {
-  // Calculate age
   const birthDate = dog.dateNaissance ? new Date(dog.dateNaissance) : null;
   const age = birthDate 
     ? Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
@@ -38,7 +33,6 @@ export function DogProfileHeader({ dog, owner }: DogProfileHeaderProps) {
       animate={{ opacity: 1, y: 0 }}
       className="flex items-start gap-8 pb-8 border-b border-gray-200"
     >
-      {/* Avatar - Instagram style (same as ProfileHeader) */}
       <div className="relative w-36 h-36 rounded-full overflow-hidden border-4 border-gray-200 flex-shrink-0">
         <Image
           src={getImageUrl(dog.photoPath)}
@@ -49,15 +43,12 @@ export function DogProfileHeader({ dog, owner }: DogProfileHeaderProps) {
         />
       </div>
 
-      {/* Info Section */}
       <div className="flex-1 pt-4">
-        {/* Dog Name */}
         <div className="flex items-center gap-4 mb-6">
           <h1 className="text-3xl font-light text-gray-900">{dog.nom}</h1>
           <span className="text-2xl">{dog.sexe === 'male' ? '♂️' : '♀️'}</span>
         </div>
 
-        {/* Stats - Instagram style (same layout) */}
         <div className="flex gap-10 mb-6 text-base">
           {age !== null && (
             <div>
@@ -75,7 +66,6 @@ export function DogProfileHeader({ dog, owner }: DogProfileHeaderProps) {
           </div>
         </div>
 
-        {/* Owner Info - Prominently displayed */}
         <Link href={`/profile/${owner.id}`}>
           <motion.div
             whileHover={{ scale: 1.02 }}
@@ -103,7 +93,6 @@ export function DogProfileHeader({ dog, owner }: DogProfileHeaderProps) {
           </motion.div>
         </Link>
 
-        {/* Bio - Instagram style */}
         <div className="text-sm space-y-1">
           <div className="text-gray-600">
             <span className="font-semibold text-gray-900">{dog.race}</span>

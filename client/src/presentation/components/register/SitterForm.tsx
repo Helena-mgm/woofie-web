@@ -18,10 +18,6 @@ interface SitterFormProps {
   onTogglePassword?: (show: boolean) => void;
 }
 
-/**
- * Formulaire d'inscription Dog-sitter
- * Règle: composant formulaire < 150 lignes
- */
 export function SitterForm({ 
   data, 
   errors, 
@@ -101,7 +97,7 @@ export function SitterForm({
           onBlur={onPasswordBlur}
           onToggleVisibility={onTogglePassword}
           error={errors.password}
-          placeholder="Min. 8 caractères"
+          placeholder="12 caractères minimum"
           required
         />
       </FormSection>
@@ -232,7 +228,7 @@ export function SitterForm({
       <FormSection title="Photo de profil (optionnel)">
         <FileUpload
           label="Photo de profil"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           onChange={(file) => onDataChange({ photo: file })}
           error={errors.photo}
         />

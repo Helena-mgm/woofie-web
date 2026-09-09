@@ -28,8 +28,6 @@ final class Version20260630014011 extends AbstractMigration
         $this->addSql('ALTER TABLE conversations ALTER created_at SET NOT NULL');
         $this->addSql('ALTER INDEX idx_conversation_participants_conv RENAME TO IDX_21821ED39AC0396');
         $this->addSql('ALTER INDEX idx_conversation_participants_user RENAME TO IDX_21821ED3A76ED395');
-        $this->addSql('DROP INDEX idx_dogs_lost');
-        $this->addSql('ALTER TABLE dogs ALTER is_lost DROP DEFAULT');
         $this->addSql('ALTER TABLE event_attendees ALTER status DROP DEFAULT');
         $this->addSql('ALTER INDEX idx_ea_event RENAME TO IDX_4E5C551871F7E88B');
         $this->addSql('ALTER INDEX idx_ea_user RENAME TO IDX_4E5C5518A76ED395');
@@ -40,7 +38,6 @@ final class Version20260630014011 extends AbstractMigration
         $this->addSql('ALTER TABLE events ALTER is_private DROP DEFAULT');
         $this->addSql('ALTER TABLE events ALTER requires_approval DROP DEFAULT');
         $this->addSql('ALTER INDEX idx_events_organizer RENAME TO IDX_5387574A876C4DDA');
-        $this->addSql('ALTER INDEX forbidden_keywords_keyword_key RENAME TO UNIQ_C21BC0B45A93713B');
         $this->addSql('ALTER TABLE group_members ALTER role DROP DEFAULT');
         $this->addSql('ALTER TABLE group_members ALTER role SET NOT NULL');
         $this->addSql('ALTER TABLE group_members ALTER can_invite DROP DEFAULT');
@@ -104,8 +101,6 @@ final class Version20260630014011 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_DB021E96E2B0FBEB ON messages (reply_to)');
         $this->addSql('ALTER INDEX idx_conversation RENAME TO idx_messages_conversation');
         $this->addSql('ALTER INDEX idx_sender RENAME TO idx_messages_sender');
-        $this->addSql('ALTER TABLE dogs ALTER is_lost SET DEFAULT false');
-        $this->addSql('CREATE INDEX idx_dogs_lost ON dogs (is_lost) WHERE (is_lost = true)');
         $this->addSql('ALTER INDEX uniq_e67ad359a65eb5cf RENAME TO uniq_poi_osm');
         $this->addSql('ALTER TABLE conversations ALTER created_at SET DEFAULT \'now()\'');
         $this->addSql('ALTER TABLE conversations ALTER created_at DROP NOT NULL');
@@ -137,7 +132,6 @@ final class Version20260630014011 extends AbstractMigration
         $this->addSql('ALTER INDEX group_user_unique RENAME TO group_members_group_id_user_id_key');
         $this->addSql('ALTER INDEX idx_c3a086f3fe54d947 RENAME TO idx_group_members_group');
         $this->addSql('ALTER INDEX idx_c3a086f3a76ed395 RENAME TO idx_group_members_user');
-        $this->addSql('ALTER INDEX uniq_c21bc0b45a93713b RENAME TO forbidden_keywords_keyword_key');
         $this->addSql('ALTER TABLE notifications ALTER is_read SET DEFAULT false');
         $this->addSql('CREATE INDEX idx_notif_user_read ON notifications (user_id, is_read)');
         $this->addSql('ALTER INDEX idx_6000b0d3a76ed395 RENAME TO idx_notif_user');

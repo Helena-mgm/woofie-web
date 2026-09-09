@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -61,11 +62,9 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
       transition={{ delay: index * 0.05 }}
       className="relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow overflow-hidden flex flex-col"
     >
-      {/* Header coloré */}
       <div className="bg-gradient-to-r from-[#D2691E] to-[#8B4513] px-5 pt-5 pb-4 text-white">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            {/* Badges */}
             <div className="flex flex-wrap gap-1.5 mb-2">
               <span className="px-2.5 py-0.5 bg-white/20 rounded-full text-xs font-medium">
                 {event.category}
@@ -81,7 +80,6 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
           </div>
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
             <span className="text-4xl leading-none">{event.image}</span>
-            {/* CRUD buttons — organizer only */}
             {isOrganizer && (
               <div className="flex gap-1">
                 <button
@@ -103,13 +101,15 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
           </div>
         </div>
 
-        {/* Organisateur */}
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/20">
           {event.organizerPhoto ? (
-            <img
+            <Image
               src={getImageUrl(event.organizerPhoto)}
               alt={event.organizerName ?? 'Organisateur'}
+              width={28}
+              height={28}
               className="w-7 h-7 rounded-full object-cover ring-2 ring-white/40"
+              unoptimized
             />
           ) : (
             <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
@@ -122,7 +122,6 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
         </div>
       </div>
 
-      {/* Corps */}
       <div className="px-5 py-4 flex-1 space-y-2">
         <div className="flex items-center gap-2 text-gray-600 text-sm">
           <span>📅</span>
@@ -153,9 +152,7 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
         <p className="text-gray-600 text-sm line-clamp-3 pt-1">{event.description}</p>
       </div>
 
-      {/* Footer : jauge + bouton */}
       <div className="px-5 pb-5 space-y-3">
-        {/* Barre de places */}
         <div>
           <button
             onClick={() => setIsAttendeesOpen(true)}
@@ -184,7 +181,6 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
           )}
         </div>
 
-        {/* Action */}
         <ActionButton
           isOrganizer={isOrganizer}
           status={status}
@@ -196,14 +192,13 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
           onLeave={handleLeave}
         />
 
-        {/* Lien vers le groupe de discussion */}
         {event.conversationId && (isOrganizer || status === 'accepted') && (
           <Link
             href={`/messages?conversation=${event.conversationId}`}
             className="flex items-center justify-center gap-1.5 w-full text-xs font-medium text-[#8B4513] hover:text-[#D2691E] transition-colors py-1"
           >
             <span>💬</span>
-            <span>Groupe de l'événement</span>
+            <span>Groupe de l&apos;événement</span>
             <span>→</span>
           </Link>
         )}
@@ -215,12 +210,11 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
         onClose={() => setIsAttendeesOpen(false)}
       />
 
-      {/* Confirm delete overlay */}
       {confirmDelete && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 rounded-2xl p-6">
           <div className="bg-white rounded-2xl p-6 shadow-2xl text-center max-w-xs w-full">
             <div className="text-4xl mb-3">🗑️</div>
-            <p className="font-bold text-gray-800 mb-1">Supprimer l'événement ?</p>
+            <p className="font-bold text-gray-800 mb-1">Supprimer l&apos;événement ?</p>
             <p className="text-sm text-gray-500 mb-5">Cette action est irréversible. Le groupe de discussion sera aussi supprimé.</p>
             <div className="flex gap-3">
               <button
@@ -242,7 +236,6 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
         </div>
       )}
 
-      {/* Edit modal */}
       {isEditOpen && onEdit && (
         <EditEventModal
           event={event}
@@ -269,7 +262,7 @@ function ActionButton({ isOrganizer, status, isFull, busy, isLoggedIn, requiresA
   if (isOrganizer) {
     return (
       <span className="block w-full text-center px-4 py-2 rounded-full bg-amber-50 text-amber-700 text-sm font-semibold">
-        🎤 Vous êtes l'organisateur
+        🎤 Vous êtes l&apos;organisateur
       </span>
     );
   }

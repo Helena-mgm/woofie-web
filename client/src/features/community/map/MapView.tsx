@@ -13,14 +13,12 @@ export default function MapView({ events = [] }: MapViewProps) {
 
   return (
     <div className="relative w-full h-full">
-      {/* Carte plein écran */}
       <Map
         showPOI={showPoi}
         events={events}
         className="w-full h-full"
       />
 
-      {/* Bouton flottant — toggle services */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex items-center justify-center w-full px-4">
         <button
           onClick={() => setShowPoi((p) => !p)}
