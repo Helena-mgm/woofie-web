@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 
+const composerDebugEnabled = process.env.NEXT_PUBLIC_MESSAGES_DEBUG === "true";
+
 export function Composer({ onSend }: { onSend: (content: string) => void | Promise<void> }) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -19,7 +21,9 @@ export function Composer({ onSend }: { onSend: (content: string) => void | Promi
       await onSend(contentToSend);
     } catch (error) {
       setValue(contentToSend);
-      console.error(error);
+      if (composerDebugEnabled) {
+        console.error(error);
+      }
     } finally {
       setSending(false);
     }
@@ -27,7 +31,6 @@ export function Composer({ onSend }: { onSend: (content: string) => void | Promi
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
-    // Auto-grow
     e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   };
@@ -71,4 +74,3 @@ export function Composer({ onSend }: { onSend: (content: string) => void | Promi
     </div>
   );
 }
-

@@ -48,13 +48,11 @@ cd woofie-web
 
 ### 2. Set up environment variables
 
-The backend `server/.env` file is **already configured** for Docker. No changes are needed for a standard local setup.
-
-If you want to customise values (JWT secret, DB port, etc.):
+Create the local configuration before starting Docker:
 
 ```bash
-cp server/.env.local.example server/.env.local
-# Then edit server/.env.local with your own values
+cp .env.example .env
+# Replace every CHANGE_ME value. Keep .env out of Git.
 ```
 
 ### 3. Install dependencies
@@ -82,7 +80,7 @@ make up
 This single command will automatically:
 
 1. 🏗️  Build all Docker images (backend, frontend, nginx...)
-2. ▶️  Start all 6 containers (DB, API, frontend, proxy, AI, DB admin)
+2. ▶️  Start the application containers (DB, API, frontend, proxy, AI and local DB tools)
 3. 🗄️  Run all database migrations
 4. 🤖  Download the **llama3.2** AI model for WoofieBot *(may take 2–5 min on first run)*
 5. ✅  Print all access URLs
@@ -111,20 +109,19 @@ Once `make up` finishes, open your browser:
 |---|---|
 | System | PostgreSQL |
 | Server | `db` |
-| Username | `symfony` |
-| Password | `symfony` |
-| Database | `woofie` |
+| Username | `POSTGRES_USER` from `.env` |
+| Password | `POSTGRES_PASSWORD` from `.env` |
+| Database | `POSTGRES_DB` from `.env` |
 
 ### Via pgAdmin (http://localhost:5050)
 
-Login: `admin@woofie.com` / `admin`
+Use `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD` from `.env`.
 
 On first login, click **"Add New Server"** and fill in:
 - **Name**: `Woofie DB`
 - **Host**: `db`
 - **Port**: `5432`
-- **Username**: `symfony`
-- **Password**: `symfony`
+- **Username**, **Password**, **Database**: use the `POSTGRES_*` values from `.env`
 
 ---
 
@@ -468,11 +465,11 @@ cd woofie-web
 
 ### 2. Configurer les variables d'environnement
 
-Le fichier `.env` du backend est **déjà configuré** pour Docker. Aucune modification n'est nécessaire pour un lancement local. Si vous souhaitez personnaliser (clé JWT, port BDD...) :
+Créez la configuration locale avant de démarrer Docker :
 
 ```bash
-cp server/.env.local.example server/.env.local
-# Puis éditez server/.env.local avec vos propres valeurs
+cp .env.example .env
+# Remplacez toutes les valeurs CHANGE_ME. Ne versionnez jamais .env.
 ```
 
 ### 3. Installer les dépendances
@@ -499,7 +496,7 @@ make up
 
 Cette commande va automatiquement :
 1. 🏗️  Construire toutes les images Docker (backend, frontend, nginx...)
-2. ▶️  Démarrer les 6 conteneurs (BDD, API, frontend, proxy, IA, admin BDD)
+2. ▶️  Démarrer les conteneurs de l’application (BDD, API, frontend, proxy, IA et outils BDD locaux)
 3. 🗄️  Appliquer toutes les migrations de base de données
 4. 🤖  Télécharger le modèle d'IA **llama3.2** pour WoofieBot *(peut prendre 2-5 min à la première fois)*
 5. ✅  Afficher les URLs d'accès
@@ -527,18 +524,17 @@ Une fois `make up` terminé, ouvrez votre navigateur :
 |---|---|
 | Système | PostgreSQL |
 | Serveur | `db` |
-| Utilisateur | `symfony` |
-| Mot de passe | `symfony` |
-| Base de données | `woofie` |
+| Utilisateur | `POSTGRES_USER` dans `.env` |
+| Mot de passe | `POSTGRES_PASSWORD` dans `.env` |
+| Base de données | `POSTGRES_DB` dans `.env` |
 
 ### Via pgAdmin (http://localhost:5050)
-Connexion : `admin@woofie.com` / `admin`  
+Utilisez `PGADMIN_DEFAULT_EMAIL` et `PGADMIN_DEFAULT_PASSWORD` depuis `.env`.
 Lors de la première connexion, cliquez sur **"Add New Server"** et renseignez :
 - **Name** : `Woofie DB`
 - **Host** : `db`
 - **Port** : `5432`
-- **Username** : `symfony`
-- **Password** : `symfony`
+- **Username**, **Password**, **Database** : utilisez les valeurs `POSTGRES_*` de `.env`
 
 ---
 

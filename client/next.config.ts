@@ -12,22 +12,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'http',
-        hostname: 'localhost',
-        port: '8080',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '**',
+        hostname: '127.0.0.1',
+        port: '8000',
         pathname: '/uploads/**',
       },
     ],
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
   },
   output: 'standalone',
   reactStrictMode: true,

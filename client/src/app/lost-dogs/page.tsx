@@ -31,7 +31,6 @@ export default function LostDogsPage() {
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-[#FFF5E6] py-12">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-8">
 
-        {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-4xl">🚨</span>
@@ -46,12 +45,10 @@ export default function LostDogsPage() {
           </div>
         </motion.div>
 
-        {/* Loading */}
         {loading && (
           <div className="text-center py-16 text-gray-500 animate-pulse text-lg">Chargement des alertes…</div>
         )}
 
-        {/* Empty */}
         {!loading && dogs.length === 0 && (
           <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100">
             <div className="text-6xl mb-4">🐕</div>
@@ -60,7 +57,6 @@ export default function LostDogsPage() {
           </div>
         )}
 
-        {/* Grid */}
         {!loading && dogs.length > 0 && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {dogs.map((dog, i) => (
@@ -69,7 +65,6 @@ export default function LostDogsPage() {
           </div>
         )}
 
-        {/* Info box */}
         <div className="mt-12 bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-3">🐾 Vous avez perdu votre chien ?</h2>
           <p className="text-sm text-gray-600 mb-4">
@@ -95,7 +90,6 @@ function LostDogCard({ dog, index }: { dog: DogProfile; index: number }) {
       transition={{ delay: index * 0.06 }}
       className="bg-white rounded-2xl shadow-md overflow-hidden border-2 border-red-200 hover:border-red-400 transition-colors"
     >
-      {/* Photo */}
       <div className="relative h-48 bg-gradient-to-br from-red-100 to-orange-100 flex items-center justify-center">
         {dog.photo ? (
           <Image
@@ -118,7 +112,6 @@ function LostDogCard({ dog, index }: { dog: DogProfile; index: number }) {
         )}
       </div>
 
-      {/* Info */}
       <div className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -154,7 +147,6 @@ function LostDogCard({ dog, index }: { dog: DogProfile; index: number }) {
           </a>
         )}
 
-        {/* Contact */}
         {dog.lostContact && (
           <div className="pt-2 border-t border-gray-100">
             <p className="text-xs text-gray-400 mb-1">Contacter le propriétaire</p>

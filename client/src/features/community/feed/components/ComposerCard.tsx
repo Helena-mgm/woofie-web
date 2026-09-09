@@ -199,7 +199,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
         </Link>
 
         <div className="flex-1 space-y-3">
-          {/* Zone de texte */}
           <div className="relative">
             <textarea
               ref={textareaRef}
@@ -210,7 +209,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
               className="w-full resize-none rounded-2xl border border-[#F1E5D4] bg-[#FFF9F5] px-4 py-3 text-sm text-[#3E2A1B] placeholder-[#C9A87C] focus:border-[#8B4513] focus:outline-none"
             />
 
-            {/* Dropdown @ unifié — personnes ET chiens */}
             {mentionQuery !== null && mentionSuggestions.length > 0 && (
               <div className="absolute left-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-2xl border border-[#F1E5D4] bg-white shadow-xl">
                 <p className="border-b border-[#F1E5D4] px-4 py-2 text-xs font-semibold text-[#A0522D]">
@@ -244,7 +242,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
                       onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); insertMentionItem(item); }}
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#FFF5E6]"
                     >
-                      {/* Photo du chien (ou patte si pas de photo) */}
                       <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-[#F1E5D4] bg-[#FFF0E0]">
                         {item.photo_path ? (
                           // Image depuis le backend — URL blob/dynamique incompatible avec next/image sans domaine configuré
@@ -272,7 +269,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
             )}
           </div>
 
-          {/* Prévisualisations des images */}
           {imagePreviews.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {imagePreviews.map((src, i) => (
@@ -280,7 +276,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
                   key={i}
                   className="relative h-20 w-20 overflow-hidden rounded-xl border border-[#F1E5D4]"
                 >
-                  {/* Prévisualisation locale (URL blob) — next/image ne supporte pas les blob: URLs */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt="" className="h-full w-full object-cover" />
                   <button
@@ -295,14 +290,12 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
             </div>
           )}
 
-          {/* Barre d'outils */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1">
-              {/* Upload image */}
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 className="hidden"
                 onChange={handleImageChange}
@@ -317,7 +310,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
                 📷
               </button>
 
-              {/* Emoji picker complet */}
               <div className="relative" ref={emojiRef}>
                 <button
                   type="button"

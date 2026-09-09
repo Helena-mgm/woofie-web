@@ -15,10 +15,6 @@ interface OwnerFormProps {
   onTogglePassword?: (show: boolean) => void;
 }
 
-/**
- * Formulaire d'inscription Propriétaire
- * Règle: composant formulaire < 150 lignes
- */
 export function OwnerForm({ 
   data, 
   errors, 
@@ -87,7 +83,7 @@ export function OwnerForm({
           onBlur={onPasswordBlur}
           onToggleVisibility={onTogglePassword}
           error={errors.password}
-          placeholder="Min. 8 caractères"
+          placeholder="12 caractères minimum"
           required
         />
       </FormSection>
@@ -118,7 +114,7 @@ export function OwnerForm({
       <FormSection title="Photo de profil (optionnel)">
         <FileUpload
           label="Photo de profil"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           onChange={(file) => onDataChange({ photo: file })}
           error={errors.photo}
         />

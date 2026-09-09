@@ -42,13 +42,12 @@ src/
 
 ### Messages
 - `useMessages` orchestrates REST + WebSocket events
-- Inbox panel and thread UI separated into <70 line components
 - Bot conversations leverage `sendBotMessage` with typing indicator feedback
 
 ### Services
 - `useServices` centralises availability/service/search filters
 - `ServiceFilters` and `ServiceCard` provide Tailwind-first UI
-- Data mocks live in `infrastructure/data/services.ts` ready for backend wiring
+- `/api/sitters` is the production source; local mock data is only used when explicitly enabled for development.
 
 ### Map
 - `features/community/map/MapView` wraps the existing MapLibre canvas
@@ -62,11 +61,10 @@ src/
 ## Integration Notes
 - Feed actions hit `/api/posts/**` endpoints (like/comment/reply/delete)
 - Messages consume `/api/conversations` + `/api/conversations/:id/messages`
-- Services currently mock data; swap `mockDogSitters` once backend endpoints exist
+- Services consume `/api/sitters`; production does not silently replace API errors with demo profiles.
 - All authenticated routes run through `ProtectRoute` (cookie/token gate)
 
 ## Next Steps
-1. Connect feed/services data to production API responses
-2. Replace legacy `chatWebSocket` client with a typed wrapper inside `features/messages`
-3. Migrate remaining legacy presentation modules (events, auth layouts) into feature slices
-4. Expand map POI sourcing and support live event overlays
+1. Replace legacy `chatWebSocket` client with a typed wrapper inside `features/messages`
+2. Migrate remaining legacy presentation modules (events, auth layouts) into feature slices
+3. Expand map POI sourcing and support live event overlays

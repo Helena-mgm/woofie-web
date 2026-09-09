@@ -14,7 +14,6 @@ type InboxPanelProps = {
 };
 
 function ConvRow({
-  id,
   icon,
   name,
   lastMessage,
@@ -24,7 +23,6 @@ function ConvRow({
   onSelect,
   onDelete,
 }: {
-  id: number;
   icon: React.ReactNode;
   name: string;
   lastMessage?: string;
@@ -154,7 +152,6 @@ export function InboxPanel({ conversations, activeId, loading, onSelect, onDelet
 
   return (
     <aside className="flex w-full flex-col overflow-hidden bg-white lg:w-72 lg:border-r lg:border-[#EDE0D0]">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-[#EDE0D0] px-4 py-4">
         <h1 className="text-lg font-bold text-[#3E2A1B]">Messages</h1>
         <button
@@ -168,13 +165,11 @@ export function InboxPanel({ conversations, activeId, loading, onSelect, onDelet
         </button>
       </div>
 
-      {/* Scrollable list */}
       <div className="flex-1 overflow-y-auto">
         <SectionLabel>WoofieBot</SectionLabel>
 
         {activeId === -1 && (
           <ConvRow
-            id={-1}
             icon={<Bot size={16} className="text-[#D2691E]" />}
             name="Nouvelle discussion"
             isActive
@@ -190,7 +185,6 @@ export function InboxPanel({ conversations, activeId, loading, onSelect, onDelet
           bots.map((conv) => (
             <ConvRow
               key={conv.id}
-              id={conv.id}
               icon={<Bot size={16} className="text-[#D2691E]" />}
               name={conv.name ?? "WoofieBot"}
               lastMessage={lastMsgText(conv)}
@@ -210,7 +204,6 @@ export function InboxPanel({ conversations, activeId, loading, onSelect, onDelet
               return (
                 <ConvRow
                   key={conv.id}
-                  id={conv.id}
                   icon={<MessageCircle size={16} className="text-[#A0522D]" />}
                   name={other?.name ?? conv.name ?? "Conversation"}
                   lastMessage={lastMsgText(conv)}
@@ -230,7 +223,6 @@ export function InboxPanel({ conversations, activeId, loading, onSelect, onDelet
             {groups.map((conv) => (
               <ConvRow
                 key={conv.id}
-                id={conv.id}
                 icon={<Users size={16} className="text-[#A0522D]" />}
                 name={conv.name ?? "Groupe"}
                 lastMessage={lastMsgText(conv)}

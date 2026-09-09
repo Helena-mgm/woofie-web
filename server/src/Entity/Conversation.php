@@ -42,7 +42,6 @@ class Conversation
         $this->createdAt = new \DateTime();
     }
 
-    // Getters & Setters
     public function getId(): ?int { return $this->id; }
     public function getType(): string { return $this->type; }
     public function setType(string $type): self { $this->type = $type; return $this; }

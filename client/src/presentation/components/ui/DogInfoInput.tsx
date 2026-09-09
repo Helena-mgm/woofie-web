@@ -1,4 +1,5 @@
-import { memo, useState } from 'react';
+import Image from 'next/image';
+import { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { validateIcadNumber } from '@/shared/lib/icad-validator';
 import { LIMITS } from '@/infrastructure/config/constants';
@@ -15,6 +16,32 @@ export interface DogInfoInputProps {
   required?: boolean;
   disabled?: boolean;
   maxItems?: number;
+}
+
+function FilePreviewImage({ file, alt, sizes }: { file: File; alt: string; sizes: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setSrc(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!src) {
+    return null;
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes={sizes}
+      className="object-cover"
+      unoptimized
+    />
+  );
 }
 
 /**
@@ -141,7 +168,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
 
   return (
     <div className="space-y-4">
-      {/* Label et bouton ajouter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <label className="block text-sm font-medium text-gray-700">
           {label}
@@ -161,17 +187,14 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
         )}
       </div>
 
-      {/* Message d'erreur global */}
       {error && (
         <p className="text-sm text-red-600">{error}</p>
       )}
 
-      {/* Helper text */}
       {helperText && !error && (
         <p className="text-sm text-gray-500">{helperText}</p>
       )}
 
-      {/* Liste des chiens ajoutés */}
       <AnimatePresence>
         {value.length > 0 && (
           <div className="space-y-3">
@@ -183,14 +206,13 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 exit={{ opacity: 0, x: -100 }}
                 className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg hover:border-[#FF6B35] transition-colors"
               >
-                {/* Photos - affiche la première */}
                 <div className="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden relative">
                   {dog.photos && dog.photos.length > 0 ? (
                     <>
-                      <img
-                        src={URL.createObjectURL(dog.photos[0])}
+                      <FilePreviewImage
+                        file={dog.photos[0]}
                         alt={dog.nom}
-                        className="w-full h-full object-cover"
+                        sizes="64px"
                       />
                       {dog.photos.length > 1 && (
                         <div className="absolute bottom-0 right-0 bg-black bg-opacity-70 text-white text-xs px-1 rounded-tl">
@@ -205,7 +227,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                   )}
                 </div>
 
-                {/* Informations */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold text-gray-900">{dog.nom}</h4>
@@ -225,7 +246,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                   <p className="text-xs text-gray-500">ICAD: {dog.icadNumber}</p>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -252,7 +272,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
         )}
       </AnimatePresence>
 
-      {/* Formulaire d'ajout/édition */}
       <AnimatePresence>
         {showForm && (
           <motion.div
@@ -266,7 +285,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 {editIndex !== null ? 'Modifier le chien' : 'Ajouter un chien'}
               </h4>
 
-              {/* Numéro ICAD avec explication */}
               <div>
                 <Input
                   label="Numéro ICAD"
@@ -301,7 +319,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 </div>
               </div>
 
-              {/* Nom */}
               <Input
                 label="Nom du chien"
                 name="nom"
@@ -313,7 +330,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 disabled={disabled}
               />
 
-              {/* Sexe */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Sexe <span className="text-red-500">*</span>
@@ -349,7 +365,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 )}
               </div>
 
-              {/* Race */}
               <BreedSelect
                 label="Race"
                 value={formData.race}
@@ -360,7 +375,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 disabled={disabled}
               />
 
-              {/* Date de naissance */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Date de naissance <span className="text-red-500">*</span>
@@ -400,21 +414,19 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 )}
               </div>
 
-              {/* Photos (mini galerie) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Photos du chien (jusqu&apos;à 5 photos)
                 </label>
                 
-                {/* Affichage des photos */}
                 {formData.photos.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     {formData.photos.map((photo: File, index: number) => (
                       <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
-                        <img
-                          src={URL.createObjectURL(photo)}
+                        <FilePreviewImage
+                          file={photo}
                           alt={`Photo ${index + 1}`}
-                          className="w-full h-full object-cover"
+                          sizes="33vw"
                         />
                         <button
                           type="button"
@@ -431,7 +443,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                   </div>
                 )}
 
-                {/* Bouton d'ajout */}
                 {formData.photos.length < 5 && (
                   <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#FF6B35] hover:bg-orange-50 transition-colors">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -447,7 +458,7 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                     </div>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       className="hidden"
                       disabled={disabled}
                       onChange={(e) => {
@@ -466,7 +477,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
                 <p className="text-sm text-gray-500 mt-2">JPG, PNG - Max 5MB par photo</p>
               </div>
 
-              {/* Actions */}
               <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                 <Button
                   type="button"
@@ -492,7 +502,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
         )}
       </AnimatePresence>
 
-      {/* Limite atteinte */}
       {!canAddMore && !showForm && (
         <p className="text-sm text-amber-600">
           ⚠️ Vous avez atteint la limite de {maxItems} chiens

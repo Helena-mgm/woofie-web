@@ -4,16 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/presentation/hooks/useAuth';
-import { apiGet, apiRequest, tokenManager } from '@/shared/lib/api';
+import { apiGet, apiRequest } from '@/shared/lib/api';
 
-// ── Types ────────────────────────────────────────────────────────────────────
 interface DashStats {
   dogsCount: number;
   postsCount: number;
   conversationsCount: number;
 }
 
-// ── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ value, label, icon }: { value: number | string; label: string; icon: string }) {
   return (
     <div className="bg-white rounded-xl shadow p-5 flex flex-col gap-1">
@@ -24,7 +22,6 @@ function StatCard({ value, label, icon }: { value: number | string; label: strin
   );
 }
 
-// ── Action card ──────────────────────────────────────────────────────────────
 function ActionCard({
   emoji, title, description, href, onClick,
 }: { emoji: string; title: string; description: string; href?: string; onClick?: () => void }) {
@@ -47,7 +44,6 @@ function ActionCard({
   return <button className="text-left block w-full" onClick={onClick}>{inner}</button>;
 }
 
-// ── RGPD export ──────────────────────────────────────────────────────────────
 function RgpdPanel() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -97,7 +93,6 @@ function RgpdPanel() {
   );
 }
 
-// ── Main page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -137,12 +132,10 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  // ── Owner Dashboard ─────────────────────────────────────────────────────────
   if (user.type === 'owner') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
         <div className="container mx-auto px-4 py-8 max-w-5xl">
-          {/* Hero */}
           <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-4xl font-bold text-[#8B4513] mb-1">Bonjour, {user.nom} ! 🐕</h1>
@@ -166,14 +159,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <StatCard value={stats.dogsCount} label="Chiens enregistrés" icon="🐶" />
             <StatCard value={stats.conversationsCount} label="Conversations" icon="💬" />
             <StatCard value="0" label="Réservations actives" icon="📅" />
           </div>
 
-          {/* Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <ActionCard emoji="🐶" title="Mes Chiens" description="Gérez les profils de vos compagnons." href="/dashboard/dogs" />
             <ActionCard emoji="🔍" title="Chercher un sitter" description="Trouvez un dog-sitter disponible dans votre ville." href="/services" />
@@ -183,18 +174,15 @@ export default function DashboardPage() {
             <ActionCard emoji="⚙️" title="Paramètres" description="Gérez votre compte et vos préférences." href="/dashboard/settings" />
           </div>
 
-          {/* RGPD */}
           <RgpdPanel />
         </div>
       </div>
     );
   }
 
-  // ── Sitter Dashboard ────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FFF5E6] via-[#FFE8CC] to-[#FFD9A6]">
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Hero */}
         <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-4xl font-bold text-[#8B4513] mb-1">
@@ -211,7 +199,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Verification banner */}
         {!user.is_verified ? (
           <div className="mb-6 rounded-xl bg-yellow-50 border-l-4 border-yellow-400 p-4 flex items-start gap-3">
             <span className="text-2xl">⚠️</span>
@@ -232,14 +219,12 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <StatCard value={stats.conversationsCount} label="Conversations" icon="💬" />
           <StatCard value="0" label="Demandes en attente" icon="📬" />
           <StatCard value="0" label="Gardes terminées" icon="🏁" />
         </div>
 
-        {/* Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <ActionCard emoji="👤" title="Mon Profil" description="Gérez votre profil visible par les propriétaires." href="/dashboard/sitter/profile" />
           <ActionCard emoji="💬" title="Messages" description="Répondez aux demandes et discutez avec les propriétaires." href="/messages" />
@@ -251,7 +236,6 @@ export default function DashboardPage() {
           <ActionCard emoji="⚙️" title="Paramètres" description="Gérez votre compte et vos préférences." href="/dashboard/settings" />
         </div>
 
-        {/* RGPD */}
         <RgpdPanel />
       </div>
     </div>

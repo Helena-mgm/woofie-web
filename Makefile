@@ -4,21 +4,24 @@ DC = docker compose
 EXEC_PHP = $(DC) exec symfony
 EXEC_NODE = $(DC) exec nextjs
 
-.PHONY: up down build logs ps bash composer migrate dbshell
+.PHONY: up down build logs ps bash composer migrate dbshell ollama-pull ollama-list
 
 ## 🐳 Containers
-up:
+up: check-env
 	docker compose down --remove-orphans
 	docker compose build --no-cache
 	docker compose up -d --wait
-	docker compose exec symfony php bin/console doctrine:migrations:migrate --no-interaction || true
-	docker compose exec symfony php bin/console cache:clear || true
+	docker compose exec symfony php bin/console doctrine:migrations:migrate --no-interaction
+	docker compose exec symfony php bin/console cache:clear
 	@echo "🤖 Téléchargement du modèle Ollama (peut prendre quelques minutes)..."
-	@docker compose exec ollama ollama pull llama3.2 || echo "⚠️  Ollama pull échoué, vous pouvez le faire manuellement avec 'make ollama-pull'"
+	@docker compose exec ollama sh -c 'ollama pull "$$OLLAMA_MODEL"' || echo "⚠️  Ollama pull échoué, vous pouvez le faire manuellement avec 'make ollama-pull'"
 	@echo "✅ Woofie is ready at http://localhost:8000"
 	@echo "📊 Adminer: http://localhost:8080"
 	@echo "📊 pgAdmin: http://localhost:5050"
-	@echo "🤖 WoofieBot: modèle llama3.2 prêt"
+	@echo "🤖 WoofieBot est prêt"
+
+check-env:
+	@test -f .env || (echo "Copiez .env.example vers .env puis remplacez les valeurs CHANGE_ME." && exit 1)
 
 down:
 	$(DC) down
@@ -43,13 +46,12 @@ migrate:
 	$(EXEC_PHP) php bin/console doctrine:migrations:migrate --no-interaction
 
 dbshell:
-	$(DC) exec db psql -U symfony -d woofie
+	$(DC) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 ## 🤖 Ollama (AI Chatbot)
 ollama-pull:
-	@echo "🤖 Téléchargement du modèle Ollama llama3.2..."
-	@docker compose exec ollama ollama pull llama3.2
-	@echo "✅ Modèle llama3.2 téléchargé et prêt !"
+	@docker compose exec ollama sh -c 'ollama pull "$$OLLAMA_MODEL"'
+	@echo "✅ Modèle téléchargé et prêt !"
 
 ollama-list:
 	@echo "📋 Modèles Ollama disponibles:"
@@ -62,22 +64,17 @@ ollama-bash:
 adminer:
 	@echo "🌐 Adminer disponible sur: http://localhost:8080"
 	@echo "   Serveur: db"
-	@echo "   Utilisateur: symfony"
-	@echo "   Mot de passe: symfony"
-	@echo "   Base de données: woofie"
+	@echo "   Identifiants: voir POSTGRES_* dans .env"
 
 pgadmin:
 	@echo "🌐 pgAdmin disponible sur: http://localhost:5050"
-	@echo "   Email: admin@woofie.com"
-	@echo "   Mot de passe: admin"
+	@echo "   Identifiants: voir PGADMIN_* dans .env"
 	@echo ""
 	@echo "   Lors de la première connexion, ajoutez le serveur:"
 	@echo "   - Nom: Woofie DB"
 	@echo "   - Host: db"
 	@echo "   - Port: 5432"
-	@echo "   - Username: symfony"
-	@echo "   - Password: symfony"
-	@echo "   - Database: woofie"
+	@echo "   - Identifiants PostgreSQL: voir .env"
 
 ## ⚡️ Frontend (Next.js)
 node-bash:
@@ -147,11 +144,10 @@ prod-cache-clear:
 	$(DC_PROD) exec symfony php bin/console cache:clear --env=prod
 
 prod-dbshell:
-	$(DC_PROD) exec db psql -U woofie -d woofie
+	$(DC_PROD) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 prod-ollama:
-	@echo "🤖 Téléchargement du modèle llama3.2..."
-	$(DC_PROD) exec ollama ollama pull llama3.2
+	$(DC_PROD) exec ollama sh -c 'ollama pull "$$OLLAMA_MODEL"'
 	@echo "✅ Modèle prêt !"
 
 prod-update:
@@ -159,5 +155,5 @@ prod-update:
 	git pull origin main
 	$(DC_PROD) build --no-cache
 	$(DC_PROD) up -d --force-recreate
-	$(DC_PROD) exec symfony php bin/console doctrine:migrations:migrate --no-interaction || true
-	@echo "✅ Mise à jour terminée → https://woofie.ovh"
+	$(DC_PROD) exec symfony php bin/console doctrine:migrations:migrate --no-interaction
+	@echo "✅ Mise à jour terminée"

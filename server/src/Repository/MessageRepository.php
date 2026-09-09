@@ -35,11 +35,24 @@ class MessageRepository extends ServiceEntityRepository
             ->update()
             ->set('m.isRead', ':isRead')
             ->where('m.conversation = :conversation')
-            ->andWhere('m.sender != :userId')
+            ->andWhere('(m.sender IS NULL OR IDENTITY(m.sender) != :userId)')
             ->setParameter('isRead', true)
             ->setParameter('conversation', $conversation)
             ->setParameter('userId', $userId)
             ->getQuery()
             ->execute();
+    }
+
+    public function findRecentForConversation(Conversation $conversation, int $limit = 20): array
+    {
+        $messages = $this->createQueryBuilder('m')
+            ->where('m.conversation = :conversation')
+            ->setParameter('conversation', $conversation)
+            ->orderBy('m.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return array_reverse($messages);
     }
 }

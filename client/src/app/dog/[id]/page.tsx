@@ -20,19 +20,21 @@ interface DogApiResponse {
   };
 }
 
-/**
- * Dog Profile Page - Same design as Owner Profile
- * Rule: < 80 lines, Instagram style
- */
 export default function DogProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const dogId = parseInt(resolvedParams.id);
+  const dogId = Number.parseInt(resolvedParams.id, 10);
   const [dog, setDog] = useState<DogApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDog = async () => {
+      if (!Number.isInteger(dogId) || dogId <= 0) {
+        setError('Identifiant de chien invalide');
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await apiGet(`/api/dog/${dogId}`);
         if (response.ok && response.data) {
@@ -84,10 +86,8 @@ export default function DogProfilePage({ params }: { params: Promise<{ id: strin
     <ProtectRoute>
       <div className="min-h-screen bg-white">
         <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Dog Profile Header - Same design as ProfileHeader */}
           <DogProfileHeader dog={dog} owner={dog.owner} />
 
-          {/* Tabs - Instagram style (same as owner profile) */}
           <div className="flex justify-center gap-12 mt-8 border-b border-gray-200">
             <button className="pb-4 border-t border-gray-900 text-sm font-semibold text-gray-900 flex items-center gap-2">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -100,7 +100,6 @@ export default function DogProfilePage({ params }: { params: Promise<{ id: strin
             </button>
           </div>
 
-          {/* Empty state for now - Same as owner profile */}
           <div className="text-center py-20 text-gray-500">
             <div className="text-4xl mb-4">📷</div>
             <p className="text-lg">Aucune publication pour le moment</p>

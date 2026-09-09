@@ -4,20 +4,30 @@ namespace App\Controller;
 
 use App\Entity\BlockedUser;
 use App\Entity\User;
+use App\Service\JwtService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route('/api/users')]
 class BlockController extends AbstractController
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(
+        private EntityManagerInterface $em,
+        private JwtService $jwtService
+    ) {
+    }
 
     #[Route('/blocked', methods: ['GET'])]
-    public function index(#[CurrentUser] User $user): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $user = $this->jwtService->getUserFromRequest($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], 401);
+        }
+
         $blocked = $this->em->getRepository(BlockedUser::class)
             ->findBy(['user' => $user]);
 
@@ -29,9 +39,18 @@ class BlockController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/{id}/block', methods: ['POST'])]
-    public function block(User $blockedUser, #[CurrentUser] User $user): JsonResponse
+    #[Route('/{id}/block', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function block(User $blockedUser, Request $request): JsonResponse
     {
+        $user = $this->jwtService->getUserFromRequest($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($blockedUser->getId() === $user->getId()) {
+            return $this->json(['error' => 'Cannot block yourself'], 400);
+        }
+
         $existing = $this->em->getRepository(BlockedUser::class)
             ->findOneBy(['user' => $user, 'blockedUser' => $blockedUser]);
 
@@ -49,9 +68,14 @@ class BlockController extends AbstractController
         return $this->json(['success' => true], 201);
     }
 
-    #[Route('/{id}/block', methods: ['DELETE'])]
-    public function unblock(User $blockedUser, #[CurrentUser] User $user): JsonResponse
+    #[Route('/{id}/block', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function unblock(User $blockedUser, Request $request): JsonResponse
     {
+        $user = $this->jwtService->getUserFromRequest($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], 401);
+        }
+
         $block = $this->em->getRepository(BlockedUser::class)
             ->findOneBy(['user' => $user, 'blockedUser' => $blockedUser]);
 

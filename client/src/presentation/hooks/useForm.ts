@@ -11,15 +11,14 @@ interface UseFormOptions<T> {
   initialValues: T;
   validate?: (values: T) => Partial<Record<keyof T, string>>;
   onSubmit: (values: T) => Promise<void> | void;
+  debug?: boolean;
 }
 
-/**
- * Hook générique pour gérer les formulaires
- */
 export function useForm<T extends Record<string, unknown>>({
   initialValues,
   validate,
   onSubmit,
+  debug = false,
 }: UseFormOptions<T>) {
   const [state, setState] = useState<FormState<T>>({
     values: initialValues,
@@ -49,7 +48,6 @@ export function useForm<T extends Record<string, unknown>>({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Validation
     const errors = validate ? validate(state.values) : {};
     const isValid = Object.keys(errors).length === 0;
 
@@ -61,13 +59,14 @@ export function useForm<T extends Record<string, unknown>>({
 
     if (!isValid) return;
 
-    // Submit
     setState((prev) => ({ ...prev, isSubmitting: true }));
     
     try {
       await onSubmit(state.values);
     } catch (error) {
-      console.error('Form submission error:', error);
+      if (debug) {
+        console.error('Form submission error:', error);
+      }
     } finally {
       setState((prev) => ({ ...prev, isSubmitting: false }));
     }

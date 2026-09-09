@@ -1,4 +1,3 @@
-// Types pour l'authentification
 export type UserType = 'owner' | 'sitter';
 
 export interface User {
@@ -9,46 +8,41 @@ export interface User {
 }
 
 export interface AuthResponse {
-  token?: string;
+  success?: boolean;
   error?: string;
 }
 
-// Types pour l'API
 export interface ApiResponse<T = unknown> {
   ok: boolean;
   data: T | null;
   status: number;
 }
 
-// Formulaires - Login
 export interface LoginFormData extends Record<string, unknown> {
-  identifier: string; // Email OU numéro de téléphone
+  identifier: string;
   password: string;
 }
 
-// Informations complètes d'un chien
 export interface DogInfo {
   icadNumber: string;
   nom: string;
   sexe: 'male' | 'female' | '';
   race: string;
   dateNaissance: string;
-  photos: File[]; // Plusieurs photos possible
+  photos: File[];
 }
 
-// Formulaires - Register Owner (maître de chien)
 export interface OwnerRegisterFormData extends Record<string, unknown> {
   nom: string;
   prenom: string;
   email: string;
   telephone: string;
   password: string;
-  dogs: DogInfo[]; // Informations complètes des chiens
+  dogs: DogInfo[];
   ville: string;
   photo?: File | null;
 }
 
-// Formulaires - Register Sitter (dog-sitter)
 export interface SitterRegisterFormData extends Record<string, unknown> {
   nom: string;
   prenom: string;
@@ -56,9 +50,9 @@ export interface SitterRegisterFormData extends Record<string, unknown> {
   telephone: string;
   password: string;
   ville: string;
-  siret: string; // Numéro SIRET obligatoire pour dog-sitter
+  siret: string;
   photo?: File | null;
-  isVerified?: boolean; // false par défaut, admins valident manuellement
+  isVerified?: boolean;
   bio: string;
   services: string[];
   price_per_hour: number | '';
@@ -66,10 +60,8 @@ export interface SitterRegisterFormData extends Record<string, unknown> {
   experience_years: number | '';
 }
 
-// Type combiné pour le formulaire d'inscription
 export interface RegisterFormData extends Record<string, unknown> {
   type: 'owner' | 'sitter';
-  // Les champs spécifiques seront ajoutés conditionnellement
 }
 
 // Types pour les animations

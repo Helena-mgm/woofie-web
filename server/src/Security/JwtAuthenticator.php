@@ -3,8 +3,7 @@
 namespace App\Security;
 
 use App\Repository\UserRepository;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+use App\Service\JwtService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,75 +17,93 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
 
 class JwtAuthenticator extends AbstractAuthenticator
 {
-    private string $jwtSecret;
+    private const PUBLIC_MUTATIONS = [
+        '/api/login',
+        '/api/register',
+        '/api/logout',
+    ];
 
     public function __construct(
-        private UserRepository $userRepository
+        private UserRepository $userRepository,
+        private JwtService $jwtService
     ) {
-        $this->jwtSecret = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
 
     public function supports(Request $request): ?bool
     {
-        // Only authenticate requests with Authorization header
-        return $request->headers->has('Authorization');
+        if ($this->isPublicRequest($request)) {
+            return false;
+        }
+
+        $authHeader = $request->headers->get('Authorization');
+
+        return ($authHeader !== null && preg_match('/^Bearer\s+\S+$/', $authHeader) === 1)
+            || $request->cookies->has(JwtService::COOKIE_NAME);
     }
 
     public function authenticate(Request $request): Passport
     {
         $authHeader = $request->headers->get('Authorization');
-        
-        error_log("[JwtAuth] Path: " . $request->getPathInfo());
-        error_log("[JwtAuth] Authorization header: " . ($authHeader ? 'Present' : 'MISSING'));
-        
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            error_log("[JwtAuth] No Bearer token found");
+
+        if ($authHeader && preg_match('/^Bearer\s+(\S+)$/', $authHeader, $matches) === 1) {
+            $token = $matches[1];
+        } else {
+            $token = $request->cookies->get(JwtService::COOKIE_NAME);
+        }
+
+        if (!$token) {
             throw new CustomUserMessageAuthenticationException('No API token provided');
         }
 
-        $token = substr($authHeader, 7); // Remove "Bearer "
-        error_log("[JwtAuth] Token extracted: " . substr($token, 0, 20) . "...");
-
         try {
-            $decoded = JWT::decode($token, new Key($this->jwtSecret, 'HS256'));
+            $decoded = $this->jwtService->decode($token);
             
-            if (!isset($decoded->email)) {
-                error_log("[JwtAuth] Token missing email field");
+            if (!isset($decoded->sub) || !is_numeric($decoded->sub)) {
                 throw new CustomUserMessageAuthenticationException('Invalid token payload');
             }
 
-            $userEmail = $decoded->email;
-            error_log("[JwtAuth] User email from token: " . $userEmail);
+            $userId = (int) $decoded->sub;
 
             return new SelfValidatingPassport(
-                new UserBadge($userEmail, function($userIdentifier) {
-                    $user = $this->userRepository->findOneBy(['email' => $userIdentifier]);
+                new UserBadge((string) $userId, function(string $userIdentifier) {
+                    $user = $this->userRepository->find((int) $userIdentifier);
                     
                     if (!$user) {
-                        error_log("[JwtAuth] User not found: " . $userIdentifier);
                         throw new CustomUserMessageAuthenticationException('User not found');
                     }
                     
-                    error_log("[JwtAuth] User authenticated: " . $user->getEmail());
                     return $user;
                 })
             );
-        } catch (\Exception $e) {
-            error_log("[JwtAuth] Token decode error: " . $e->getMessage());
-            throw new CustomUserMessageAuthenticationException('Invalid token: ' . $e->getMessage());
+        } catch (\Throwable) {
+            throw new CustomUserMessageAuthenticationException('Invalid token');
         }
     }
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
-        // Let the request continue
         return null;
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
         return new JsonResponse([
-            'error' => $exception->getMessage()
+            'error' => 'Unauthorized'
         ], Response::HTTP_UNAUTHORIZED);
+    }
+
+    private function isPublicRequest(Request $request): bool
+    {
+        $path = $request->getPathInfo();
+
+        if (in_array($path, self::PUBLIC_MUTATIONS, true)) {
+            return true;
+        }
+
+        if ($request->getMethod() !== 'GET') {
+            return false;
+        }
+
+        return preg_match('#^/api/(?:events(?:/\d+(?:/attendees)?)?|posts|sitters|siret/[^/]+|dogs/lost|profile/\d+|dog/\d+|locations|pois)$#', $path) === 1;
     }
 }

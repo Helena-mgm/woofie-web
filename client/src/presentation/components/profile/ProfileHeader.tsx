@@ -26,10 +26,6 @@ interface ProfileHeaderProps {
   };
 }
 
-/**
- * Instagram-like Profile Header
- * Rule: < 60 lines, clean design
- */
 export function ProfileHeader({ profile }: ProfileHeaderProps) {
   const fullName = profile.prenom ? `${profile.prenom} ${profile.nom}` : profile.nom;
 
@@ -39,7 +35,6 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
       animate={{ opacity: 1, y: 0 }}
       className="flex items-start gap-8 pb-8 border-b border-gray-200"
     >
-      {/* Avatar - Instagram style */}
       <div className="relative w-36 h-36 rounded-full overflow-hidden border-4 border-gray-200 flex-shrink-0">
         {profile.photoPath ? (
           <Image
@@ -56,9 +51,7 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
         )}
       </div>
 
-      {/* Info Section */}
       <div className="flex-1 pt-4">
-        {/* Username + Badges */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <h1 className="text-3xl font-light text-gray-900">{fullName}</h1>
           {profile.isAdmin && (
@@ -83,7 +76,6 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
           )}
         </div>
 
-        {/* Stats - Instagram style */}
         <div className="flex gap-10 mb-6 text-base">
           {profile.stats.totalDogs !== undefined && (
             <div>
@@ -101,7 +93,6 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
           </div>
         </div>
 
-        {/* Bio & details */}
         <div className="space-y-3 text-sm text-gray-700">
           <div className="font-semibold text-gray-900">
             {profile.type === 'owner' ? '🐾 Propriétaire de toutous adorables' : '🐕‍🦺 Dog-sitter professionnel'}

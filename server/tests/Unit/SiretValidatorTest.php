@@ -6,40 +6,35 @@ use App\Service\SiretValidator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/**
- * Tests unitaires pour le service SiretValidator.
- *
- * Ces tests vérifient la logique métier locale (format + algorithme de Luhn)
- * sans appel réseau, ce qui les rend rapides et déterministes en CI.
- */
 class SiretValidatorTest extends TestCase
 {
     private SiretValidator $validator;
 
     protected function setUp(): void
     {
-        // On injecte un mock du client HTTP : aucun appel réseau ne sera effectué
-        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient = $this->createStub(HttpClientInterface::class);
         $this->validator = new SiretValidator($httpClient, null);
     }
-
-    // ──────────────────────────────────────────────
-    // Tests de validation du FORMAT (14 chiffres)
-    // ──────────────────────────────────────────────
 
     public function testValidFormatAccepts14Digits(): void
     {
         $this->assertTrue($this->validator->isValidFormat('73282932000074'));
     }
 
+    public function testValidFormatAcceptsSeparatedDigits(): void
+    {
+        $this->assertTrue($this->validator->isValidFormat('443 061 841 00047'));
+        $this->assertTrue($this->validator->isValidFormat('443-061-841-00047'));
+    }
+
     public function testInvalidFormatRejectsTooShort(): void
     {
-        $this->assertFalse($this->validator->isValidFormat('1234567890123')); // 13 chiffres
+        $this->assertFalse($this->validator->isValidFormat('1234567890123'));
     }
 
     public function testInvalidFormatRejectsTooLong(): void
     {
-        $this->assertFalse($this->validator->isValidFormat('123456789012345')); // 15 chiffres
+        $this->assertFalse($this->validator->isValidFormat('123456789012345'));
     }
 
     public function testInvalidFormatRejectsLetters(): void
@@ -62,6 +57,14 @@ class SiretValidatorTest extends TestCase
     public function testLuhnAcceptsValidSiret(): void
     {
         $this->assertTrue($this->validator->validateLuhn('21750001600019'));
+    }
+
+    /**
+     * SIRET réel Google France — clé Luhn valide.
+     */
+    public function testLuhnAcceptsGoogleFranceSiret(): void
+    {
+        $this->assertTrue($this->validator->validateLuhn('44306184100047'));
     }
 
     /**
@@ -93,5 +96,6 @@ class SiretValidatorTest extends TestCase
     {
         $this->assertFalse($this->validator->isValidFormat("'; DROP TABLE users;--"));
         $this->assertFalse($this->validator->isValidFormat('<script>alert(1)</script>'));
+        $this->assertFalse($this->validator->isValidFormat('44306184100047<script>'));
     }
 }

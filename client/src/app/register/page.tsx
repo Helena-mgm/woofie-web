@@ -9,13 +9,8 @@ import { SitterForm } from '@/presentation/components/register/SitterForm';
 import { AnimatedDog } from '@/presentation/components/AnimatedDog';
 import { AnimatedPawPrints } from '@/presentation/components/home/AnimatedPawPrints';
 import { useRegister } from '@/presentation/hooks/useRegister';
-import { tokenManager } from '@/shared/lib/api';
+import { apiGet, tokenManager } from '@/shared/lib/api';
 
-/**
- * Register Page - Ultra simplified
- * Rule: < 90 lines, composition only
- * Redirects to dashboard if already logged in
- */
 export default function RegisterPage() {
   const router = useRouter();
   const {
@@ -30,11 +25,31 @@ export default function RegisterPage() {
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if already logged in
   useEffect(() => {
-    if (tokenManager.exists()) {
-        router.push('/community');
+    let cancelled = false;
+
+    async function redirectIfSessionIsValid() {
+      if (!tokenManager.exists()) {
+        return;
+      }
+
+      const response = await apiGet('/api/me');
+      if (cancelled) {
+        return;
+      }
+
+      if (response.ok) {
+        router.replace('/community');
+      } else {
+        tokenManager.remove();
+      }
     }
+
+    redirectIfSessionIsValid();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return (

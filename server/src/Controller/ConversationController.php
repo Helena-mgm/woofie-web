@@ -4,12 +4,13 @@ namespace App\Controller;
 
 use App\Entity\Conversation;
 use App\Entity\Message;
+use App\Entity\Group;
+use App\Entity\GroupMember;
 use App\Entity\User;
 use App\Repository\ConversationRepository;
 use App\Repository\UserRepository;
+use App\Service\JwtService;
 use Doctrine\ORM\EntityManagerInterface;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,32 +19,19 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/conversations')]
 class ConversationController extends AbstractController
 {
-    private string $jwtKey;
-
     public function __construct(
         private EntityManagerInterface $em,
         private ConversationRepository $conversationRepo,
-        private UserRepository $userRepo
+        private UserRepository $userRepo,
+        private JwtService $jwtService
     ) {
-        $this->jwtKey = getenv('JWT_SECRET') ?: 'change_this_secret';
     }
 
     private function getUserFromToken(Request $request): ?User
     {
-        $authHeader = $request->headers->get('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return null;
-        }
-        try {
-            $decoded = JWT::decode(substr($authHeader, 7), new Key($this->jwtKey, 'HS256'));
-            return $this->userRepo->find($decoded->sub);
-        } catch (\Exception $e) {
-            error_log("[ConversationController] JWT error: " . $e->getMessage());
-            return null;
-        }
+        return $this->jwtService->getUserFromRequest($request);
     }
 
-    /** Serialize a participant user into the shape the frontend expects */
     private function serializeParticipant(User $p): array
     {
         $owner = $p->getOwner();
@@ -64,7 +52,6 @@ class ConversationController extends AbstractController
         ];
     }
 
-    /** Serialize a conversation with its last message and real unread count */
     private function serializeConversation(Conversation $conv, User $currentUser): array
     {
         $lastMsg = $conv->getLastMessage();
@@ -117,41 +104,59 @@ class ConversationController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return $this->json(['error' => 'Payload invalide'], 400);
+        }
+
+        $type = $data['type'] ?? 'direct';
+        if ($type !== 'direct') {
+            return $this->json(['error' => 'Type de conversation invalide'], 400);
+        }
 
         $conversation = new Conversation();
-        $conversation->setType($data['type'] ?? 'direct');
-        $conversation->setName($data['name'] ?? null);
+        $conversation->setType($type);
+        $conversation->setName(null);
         $conversation->addParticipant($user);
 
         if (isset($data['participantIds'])) {
+            if (!is_array($data['participantIds'])) {
+                return $this->json(['error' => 'participantIds doit être un tableau'], 400);
+            }
+            if (count($data['participantIds']) !== 1) {
+                return $this->json(['error' => 'Une conversation directe doit avoir exactement un autre participant'], 400);
+            }
             foreach ($data['participantIds'] as $participantId) {
-                $participant = $this->userRepo->find($participantId);
+                if (!is_int($participantId) && !ctype_digit((string) $participantId)) {
+                    return $this->json(['error' => 'participantIds contient une valeur invalide'], 400);
+                }
+                $participant = $this->userRepo->find((int) $participantId);
                 if ($participant && !$conversation->getParticipants()->contains($participant)) {
                     $conversation->addParticipant($participant);
                 }
             }
         }
 
-        $this->em->persist($conversation);
-
-        // System message: group created
-        if ($conversation->getType() === 'group') {
-            $owner = $user->getOwner();
-            $sitter = $this->em->getRepository(\App\Entity\Sitter::class)->findOneBy(['user' => $user]);
-            $displayName = $owner ? $owner->getFullName() : ($sitter ? trim($sitter->getPrenom() . ' ' . $sitter->getNom()) : $user->getEmail());
-            $sysMsg = new Message();
-            $sysMsg->setConversation($conversation);
-            $sysMsg->setSender(null);
-            $sysMsg->setContent("🏠 Groupe créé par {$displayName}");
-            $sysMsg->setType('system');
-            $this->em->persist($sysMsg);
+        if ($type === 'direct' && $conversation->getParticipants()->count() !== 2) {
+            return $this->json(['error' => 'Participant introuvable'], 400);
         }
+
+        $otherParticipant = $conversation->getParticipants()->filter(
+            fn(User $participant): bool => $participant->getId() !== $user->getId()
+        )->first();
+        if ($otherParticipant instanceof User) {
+            $existing = $this->conversationRepo->findDirectConversation($user, $otherParticipant);
+            if ($existing && $existing->getParticipants()->count() === 2) {
+                return $this->json($this->serializeConversation($existing, $user));
+            }
+        }
+
+        $this->em->persist($conversation);
 
         $this->em->flush();
         return $this->json($this->serializeConversation($conversation, $user), 201);
     }
 
-    #[Route('/{id}/participants', methods: ['GET'])]
+    #[Route('/{id}/participants', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function participants(Conversation $conversation, Request $request): JsonResponse
     {
         $user = $this->getUserFromToken($request);
@@ -165,7 +170,7 @@ class ConversationController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/{id}/join', methods: ['POST'])]
+    #[Route('/{id}/join', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function join(Conversation $conversation, Request $request): JsonResponse
     {
         $user = $this->getUserFromToken($request);
@@ -175,25 +180,13 @@ class ConversationController extends AbstractController
         if ($conversation->getType() !== 'group') {
             return $this->json(['error' => 'Seulement pour les groupes'], 400);
         }
-        if (!$conversation->getParticipants()->contains($user)) {
-            $conversation->addParticipant($user);
-
-            $owner = $user->getOwner();
-            $sitter = $this->em->getRepository(\App\Entity\Sitter::class)->findOneBy(['user' => $user]);
-            $displayName = $owner ? $owner->getFullName() : ($sitter ? trim($sitter->getPrenom() . ' ' . $sitter->getNom()) : $user->getEmail());
-
-            $sysMsg = new Message();
-            $sysMsg->setConversation($conversation);
-            $sysMsg->setSender(null);
-            $sysMsg->setContent("➕ {$displayName} a rejoint le groupe");
-            $sysMsg->setType('system');
-            $this->em->persist($sysMsg);
-            $this->em->flush();
+        if (!$conversation->getParticipants()->contains($user) && !$user->isAdmin()) {
+            return $this->json(['error' => 'Invitation requise'], 403);
         }
         return $this->json($this->serializeConversation($conversation, $user));
     }
 
-    #[Route('/{id}/leave', methods: ['POST'])]
+    #[Route('/{id}/leave', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function leave(Conversation $conversation, Request $request): JsonResponse
     {
         $user = $this->getUserFromToken($request);
@@ -204,7 +197,19 @@ class ConversationController extends AbstractController
             return $this->json(['error' => 'Seulement pour les groupes'], 400);
         }
         if ($conversation->getParticipants()->contains($user)) {
+            $group = $this->em->getRepository(Group::class)->findOneBy(['conversation' => $conversation]);
+            if ($group?->getOwner()->getId() === $user->getId()) {
+                return $this->json(['error' => 'Le propriétaire du groupe ne peut pas le quitter'], 409);
+            }
+
             $conversation->removeParticipant($user);
+
+            if ($group) {
+                $member = $this->em->getRepository(GroupMember::class)->findOneBy(['group' => $group, 'user' => $user]);
+                if ($member) {
+                    $this->em->remove($member);
+                }
+            }
 
             $owner = $user->getOwner();
             $sitter = $this->em->getRepository(\App\Entity\Sitter::class)->findOneBy(['user' => $user]);
@@ -221,14 +226,14 @@ class ConversationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/{id}', methods: ['DELETE'])]
+    #[Route('/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
     public function delete(Conversation $conversation, Request $request): JsonResponse
     {
         $user = $this->getUserFromToken($request);
         if (!$user) {
             return $this->json(['error' => 'Vous devez être connecté.'], 401);
         }
-        if (!$conversation->getParticipants()->contains($user) && !$user->isAdmin()) {
+        if (!$user->isAdmin()) {
             return $this->json(['error' => 'Accès refusé'], 403);
         }
         $this->em->remove($conversation);

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient, type QueryKey, type UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { apiGet, tokenManager } from '@/shared/lib/api';
+import { apiGet, apiPost, tokenManager } from '@/shared/lib/api';
 
 export interface UserProfile {
   id: number;
@@ -33,6 +33,8 @@ interface UseAuthReturn {
   isAuthenticated: boolean;
 }
 
+const USER_QUERY_KEY = ['user'] as const;
+
 export function useAuth(): UseAuthReturn {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -41,8 +43,7 @@ export function useAuth(): UseAuthReturn {
   );
 
   const fetchUser = async (): Promise<UserProfile | null> => {
-    const token = tokenManager.get();
-    if (!token) {
+    if (!tokenManager.exists()) {
       setHasToken(false);
       return null;
     }
@@ -61,13 +62,12 @@ export function useAuth(): UseAuthReturn {
     return null;
   };
 
-  const queryKey = ['user'] satisfies QueryKey;
-  const queryOptions: UseQueryOptions<UserProfile | null, Error, UserProfile | null, typeof queryKey> = {
-    queryKey,
+  const queryOptions: UseQueryOptions<UserProfile | null, Error, UserProfile | null, typeof USER_QUERY_KEY> = {
+    queryKey: USER_QUERY_KEY,
     queryFn: fetchUser,
-    staleTime: 5 * 60 * 1000, // Cache user data for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep unused cache for 10 minutes
-    refetchOnWindowFocus: false, // Disable refetch on window focus
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     enabled: hasToken,
     retry: hasToken ? 1 : false,
   };
@@ -77,14 +77,16 @@ export function useAuth(): UseAuthReturn {
     isLoading,
     isFetching,
     error,
-  } = useQuery<UserProfile | null, Error, UserProfile | null, typeof queryKey>(queryOptions);
+  } = useQuery<UserProfile | null, Error, UserProfile | null, typeof USER_QUERY_KEY>(queryOptions);
 
   const logout = () => {
-    tokenManager.remove();
-    queryClient.removeQueries({ queryKey });
-    window.dispatchEvent(new Event('auth-change'));
-    setHasToken(false);
-    router.push('/');
+    void apiPost('/api/logout', {}).finally(() => {
+      tokenManager.remove();
+      queryClient.removeQueries({ queryKey: USER_QUERY_KEY });
+      window.dispatchEvent(new Event('auth-change'));
+      setHasToken(false);
+      router.push('/');
+    });
   };
 
   useEffect(() => {
@@ -92,9 +94,9 @@ export function useAuth(): UseAuthReturn {
       const tokenPresent = tokenManager.exists();
       setHasToken(tokenPresent);
       if (tokenPresent) {
-        queryClient.invalidateQueries({ queryKey });
+        queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
       } else {
-        queryClient.removeQueries({ queryKey });
+        queryClient.removeQueries({ queryKey: USER_QUERY_KEY });
       }
     };
 
@@ -102,13 +104,13 @@ export function useAuth(): UseAuthReturn {
     return () => {
       window.removeEventListener('auth-change', handleAuthChange);
     };
-  }, [queryClient, queryKey]);
+  }, [queryClient]);
 
   useEffect(() => {
     if (!hasToken) {
-      queryClient.removeQueries({ queryKey });
+      queryClient.removeQueries({ queryKey: USER_QUERY_KEY });
     }
-  }, [hasToken, queryClient, queryKey]);
+  }, [hasToken, queryClient]);
 
   const loading = hasToken && (isLoading || isFetching);
 

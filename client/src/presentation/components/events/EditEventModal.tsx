@@ -145,7 +145,7 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
       <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92dvh] flex flex-col">
 
         <div className="bg-gradient-to-r from-[#D2691E] to-[#8B4513] px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <h2 className="text-lg font-bold text-white">✏️ Modifier l'événement</h2>
+          <h2 className="text-lg font-bold text-white">✏️ Modifier l&apos;événement</h2>
           <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
@@ -159,7 +159,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
 
-            {/* Titre */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Titre *</label>
               <input
@@ -169,7 +168,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
               />
             </div>
 
-            {/* Description */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Description *</label>
               <textarea
@@ -179,7 +177,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
               />
             </div>
 
-            {/* Date + Heure */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Date *</label>
@@ -199,7 +196,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
               </div>
             </div>
 
-            {/* Lieu */}
             <div className="space-y-2 border border-gray-100 rounded-xl p-4 bg-gray-50/60">
               <p className="text-sm font-semibold text-gray-700 mb-2">📍 Lieu *</p>
               <div>
@@ -250,7 +246,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
               </div>
             </div>
 
-            {/* Catégorie + Places max */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Catégorie *</label>
@@ -274,7 +269,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
               </div>
             </div>
 
-            {/* Icône */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Icône</label>
               <div className="flex flex-wrap gap-2">
@@ -287,7 +281,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
               </div>
             </div>
 
-            {/* Options */}
             <div className="flex flex-col gap-2.5 p-4 bg-gray-50 rounded-xl">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Options</p>
               <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">

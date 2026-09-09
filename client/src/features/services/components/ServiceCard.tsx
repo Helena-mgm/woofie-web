@@ -9,6 +9,8 @@ import { Button } from "@/shared/ui/button";
 import { apiGet, apiPost } from "@/shared/lib/api";
 import { useAuth } from "@/presentation/hooks/useAuth";
 
+const serviceCardDebugEnabled = process.env.NEXT_PUBLIC_SERVICE_CARD_DEBUG === 'true';
+
 export function ServiceCard({ sitter }: { sitter: DogSitter }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -25,12 +27,10 @@ export function ServiceCard({ sitter }: { sitter: DogSitter }) {
       return;
     }
 
-    // Le backend retourne user_id (ID de l'entité User) et id (ID du sitter)
     const targetUserId = sitter.user_id ?? sitter.id;
 
     setStarting(true);
     try {
-      // Chercher une conversation directe existante avec ce sitter
       const { ok, data } = await apiGet('/api/conversations');
       let conversationId: number | null = null;
 
@@ -43,7 +43,6 @@ export function ServiceCard({ sitter }: { sitter: DogSitter }) {
         if (existing) conversationId = existing.id;
       }
 
-      // Créer une nouvelle conversation si elle n'existe pas encore
       if (!conversationId) {
         const res = await apiPost('/api/conversations', {
           type: 'direct',
@@ -55,12 +54,13 @@ export function ServiceCard({ sitter }: { sitter: DogSitter }) {
       }
 
       if (conversationId) {
-        // Stocker l'ID pour que MessagesView l'ouvre automatiquement
         sessionStorage.setItem('openConversation', String(conversationId));
         router.push('/messages');
       }
     } catch (err) {
-      console.error('[ServiceCard] handleContact', err);
+      if (serviceCardDebugEnabled) {
+        console.error('[ServiceCard] handleContact', err);
+      }
     } finally {
       setStarting(false);
     }

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '@/shared/lib/api';
 
+const dogsDebugEnabled = process.env.NEXT_PUBLIC_DOGS_DEBUG === 'true';
+
 export interface DogProfile {
   id: number;
   name: string;
@@ -31,21 +33,33 @@ export function useDogs() {
   const [dogs, setDogs] = useState<DogProfile[]>([]);
   const [lostDogs, setLostDogs] = useState<DogProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchMine = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await apiRequest('/api/dogs/mine');
       if (res.ok) setDogs(await res.json());
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch (err) {
+      if (dogsDebugEnabled) {
+        console.error('[dogs] fetchMine failed', err);
+      }
+      setError('Impossible de charger vos chiens.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const fetchLost = useCallback(async () => {
     try {
       const res = await apiRequest('/api/dogs/lost');
       if (res.ok) setLostDogs(await res.json());
-    } catch { /* silent */ }
+    } catch (err) {
+      if (dogsDebugEnabled) {
+        console.error('[dogs] fetchLost failed', err);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -60,7 +74,13 @@ export function useDogs() {
       const created = await res.json() as DogProfile;
       setDogs(prev => [...prev, created]);
       return created;
-    } catch { return null; }
+    } catch (err) {
+      if (dogsDebugEnabled) {
+        console.error('[dogs] create failed', err);
+      }
+      setError('Impossible de créer le chien.');
+      return null;
+    }
   }, []);
 
   const updateDog = useCallback(async (id: number, payload: Partial<DogProfile>): Promise<DogProfile | null> => {
@@ -70,7 +90,13 @@ export function useDogs() {
       const updated = await res.json() as DogProfile;
       setDogs(prev => prev.map(d => d.id === id ? updated : d));
       return updated;
-    } catch { return null; }
+    } catch (err) {
+      if (dogsDebugEnabled) {
+        console.error('[dogs] update failed', err);
+      }
+      setError('Impossible de modifier le chien.');
+      return null;
+    }
   }, []);
 
   const deleteDog = useCallback(async (id: number): Promise<boolean> => {
@@ -79,7 +105,13 @@ export function useDogs() {
       if (!res.ok) return false;
       setDogs(prev => prev.filter(d => d.id !== id));
       return true;
-    } catch { return false; }
+    } catch (err) {
+      if (dogsDebugEnabled) {
+        console.error('[dogs] delete failed', err);
+      }
+      setError('Impossible de supprimer le chien.');
+      return false;
+    }
   }, []);
 
   const markLost = useCallback(async (id: number, data: {
@@ -92,7 +124,13 @@ export function useDogs() {
       setDogs(prev => prev.map(d => d.id === id ? updated : d));
       setLostDogs(prev => [updated, ...prev.filter(d => d.id !== id)]);
       return updated;
-    } catch { return null; }
+    } catch (err) {
+      if (dogsDebugEnabled) {
+        console.error('[dogs] markLost failed', err);
+      }
+      setError('Impossible de déclarer ce chien perdu.');
+      return null;
+    }
   }, []);
 
   const markFound = useCallback(async (id: number): Promise<DogProfile | null> => {
@@ -103,11 +141,17 @@ export function useDogs() {
       setDogs(prev => prev.map(d => d.id === id ? updated : d));
       setLostDogs(prev => prev.filter(d => d.id !== id));
       return updated;
-    } catch { return null; }
+    } catch (err) {
+      if (dogsDebugEnabled) {
+        console.error('[dogs] markFound failed', err);
+      }
+      setError('Impossible de déclarer ce chien retrouvé.');
+      return null;
+    }
   }, []);
 
   return {
-    dogs, lostDogs, loading,
+    dogs, lostDogs, loading, error,
     createDog, updateDog, deleteDog,
     markLost, markFound,
     refetch: fetchMine,

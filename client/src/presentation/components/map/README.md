@@ -190,10 +190,11 @@ Utilisée pour récupérer les POI en temps réel.
 ### La carte ne s'affiche pas
 Vérifiez que le conteneur parent a une hauteur définie :
 ```tsx
-<div className="h-screen"> {/* ou h-[600px] */}
+<div className="h-screen">
   <Map events={events} />
 </div>
 ```
+`h-[600px]` fonctionne aussi si la carte ne doit pas prendre toute la hauteur.
 
 ### Les POI ne se chargent pas
 - Vérifiez votre connexion internet
