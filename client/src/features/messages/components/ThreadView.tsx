@@ -143,9 +143,13 @@ export function ThreadView({
   }, [conversation, isBot, isGroup, ownId]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    const frame = window.requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [messages, botTyping]);
 
   if (!conversation) {
@@ -160,7 +164,7 @@ export function ThreadView({
   }
 
   return (
-    <section className="relative flex flex-1 min-w-0 flex-col bg-[#FAF6F1]">
+    <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#FAF6F1]">
       <div className="flex items-center gap-2 border-b border-[#EDE0D0] bg-white px-3 py-3.5 sm:gap-3 sm:px-6">
         {onBack && (
           <button
@@ -202,7 +206,7 @@ export function ThreadView({
         )}
       </div>
 
-      <div ref={scrollRef} className="flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5">
+      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-5">
         {loading && messages.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-sm text-[#A0522D]">Chargement…</div>
         ) : messages.length === 0 && isBot ? (
@@ -316,7 +320,7 @@ export function ThreadView({
         )}
       </div>
 
-      <div className="border-t border-[#EDE0D0] bg-white px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="shrink-0 border-t border-[#EDE0D0] bg-white px-3 py-2.5 sm:px-4 sm:py-3">
         <Composer onSend={onSend} />
       </div>
 

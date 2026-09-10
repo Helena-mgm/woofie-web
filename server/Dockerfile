@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 
+RUN printf 'APP_ENV=prod\nAPP_DEBUG=0\n' > .env
+
 RUN mkdir -p public/uploads/owners public/uploads/dogs public/uploads/posts public/uploads/sitters \
  && chown -R www-data:www-data public/uploads \
  && chmod -R 775 public/uploads
