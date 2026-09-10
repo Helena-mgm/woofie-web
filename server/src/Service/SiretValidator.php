@@ -6,7 +6,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class SiretValidator
 {
-    private const API_SIRENE_URL = 'https://api.insee.fr/entreprises/sirene/V3/siret/';
+    private const API_SIRENE_URL = 'https://api.insee.fr/api-sirene/3.11/siret/';
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -65,7 +65,8 @@ class SiretValidator
             ];
         }
 
-        if (!$this->inseeApiKey) {
+        $apiKey = is_string($this->inseeApiKey) ? trim($this->inseeApiKey) : '';
+        if ($apiKey === '') {
             return [
                 'exists' => false,
                 'error' => 'Clé API INSEE non configurée (validation locale uniquement)'
@@ -75,7 +76,7 @@ class SiretValidator
         try {
             $response = $this->httpClient->request('GET', self::API_SIRENE_URL . $siret, [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $this->inseeApiKey,
+                    'X-INSEE-Api-Key-Integration' => $apiKey,
                     'Accept' => 'application/json',
                 ],
                 'timeout' => 5,
