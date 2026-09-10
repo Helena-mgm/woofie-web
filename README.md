@@ -82,7 +82,7 @@ This single command will automatically:
 1. 🏗️  Build all Docker images (backend, frontend, nginx...)
 2. ▶️  Start the application containers (DB, API, frontend, proxy, AI and local DB tools)
 3. 🗄️  Run all database migrations
-4. 🤖  Download the **llama3.2** AI model for WoofieBot *(may take 2–5 min on first run)*
+4. 🤖  Download the **qwen2.5:0.5b** AI model for WoofieBot *(may take 2–5 min on first run)*
 5. ✅  Print all access URLs
 
 > ⏳ **On first launch**, downloading Docker images and the AI model can take **5 to 10 minutes** depending on your connection. Subsequent starts will be near-instant.
@@ -270,7 +270,7 @@ The AI model needs to be downloaded inside the Ollama container:
 make ollama-pull
 ```
 
-> The **llama3.2** model is approximately **2 GB**. Make sure you have enough disk space and a stable connection.
+> The configured **qwen2.5:0.5b** model is lightweight. Make sure you have enough disk space and a stable connection.
 
 ### ❌ App shows a blank page or error
 
@@ -498,7 +498,7 @@ Cette commande va automatiquement :
 1. 🏗️  Construire toutes les images Docker (backend, frontend, nginx...)
 2. ▶️  Démarrer les conteneurs de l’application (BDD, API, frontend, proxy, IA et outils BDD locaux)
 3. 🗄️  Appliquer toutes les migrations de base de données
-4. 🤖  Télécharger le modèle d'IA **llama3.2** pour WoofieBot *(peut prendre 2-5 min à la première fois)*
+4. 🤖  Télécharger le modèle d'IA **qwen2.5:0.5b** pour WoofieBot *(peut prendre 2-5 min à la première fois)*
 5. ✅  Afficher les URLs d'accès
 
 > ⏳ **La première fois**, le téléchargement des images et du modèle IA peut prendre **5 à 10 minutes** selon votre connexion. Les lancements suivants seront quasi-instantanés.
@@ -674,7 +674,7 @@ Le modèle IA doit être téléchargé dans le conteneur Ollama. Lancez :
 ```bash
 make ollama-pull
 ```
-> Le modèle **llama3.2** pèse environ **2 Go**. Assurez-vous d'avoir suffisamment d'espace disque et une bonne connexion.
+> Le modèle configuré **qwen2.5:0.5b** est léger. Assurez-vous d'avoir suffisamment d'espace disque et une bonne connexion.
 
 ### ❌ L'application affiche une erreur ou page blanche
 Vérifiez que tous les conteneurs sont bien démarrés :

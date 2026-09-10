@@ -115,6 +115,7 @@ if [ ! -f "$CERT_PATH" ]; then
         --webroot --webroot-path=/var/www/certbot \
         --email "${CERTBOT_EMAIL}" \
         --agree-tos --no-eff-email \
+        --non-interactive --keep-until-expiring \
         -d "${DOMAIN}" -d "www.${DOMAIN}" || {
             docker stop nginx-certbot-init && docker rm nginx-certbot-init 2>/dev/null || true
             error "Échec Let's Encrypt. Vérifiez :
