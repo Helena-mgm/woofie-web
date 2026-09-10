@@ -42,6 +42,7 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:?Variable OLLAMA_MODEL obligatoire dans .env.prod}
       OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:?Variable OLLAMA_TIMEOUT_SECONDS obligatoire dans .env.prod}
       OLLAMA_MAX_RESPONSE_CHARS: ${OLLAMA_MAX_RESPONSE_CHARS:?Variable OLLAMA_MAX_RESPONSE_CHARS obligatoire dans .env.prod}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:?Variable OLLAMA_NUM_CTX obligatoire dans .env.prod}
       MESSENGER_TRANSPORT_DSN: "sync://"
       APP_SECRET: ${APP_SECRET:?❌ Variable APP_SECRET obligatoire dans .env.prod}
       JWT_SECRET: ${JWT_SECRET:?❌ Variable JWT_SECRET obligatoire dans .env.prod}
