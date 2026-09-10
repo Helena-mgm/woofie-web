@@ -333,8 +333,8 @@ class DogController extends AbstractController
             } elseif (!is_string($data['dateNaissance'])) {
                 return $this->json(['error' => 'Date de naissance invalide'], 400);
             } else {
-                $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $data['dateNaissance']);
-                $dateErrors = \DateTimeImmutable::getLastErrors();
+                $date = \DateTime::createFromFormat('!Y-m-d', $data['dateNaissance']);
+                $dateErrors = \DateTime::getLastErrors();
                 if (!$date || ($dateErrors !== false && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0)) || $date->format('Y-m-d') !== $data['dateNaissance'] || $date > new \DateTimeImmutable('today')) {
                     return $this->json(['error' => 'Date de naissance invalide'], 400);
                 }
