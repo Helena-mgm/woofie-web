@@ -324,7 +324,10 @@ class EventController extends AbstractController
         $event = $this->eventRepo->find($id);
         if (!$event) return $this->json(['error' => 'Événement introuvable'], 404);
 
-        $user        = $this->getUserFromToken($request);
+        $user = $this->getUserFromToken($request);
+        if ($event->isPrivate() && !$this->canAccessPrivate($event, $user)) {
+            return $this->json(['error' => 'Événement introuvable'], 404);
+        }
         $isOrganizer = $user && $event->getOrganizer()->getId() === $user->getId();
 
         $result = [];
@@ -516,8 +519,8 @@ class EventController extends AbstractController
 
         if (array_key_exists('date', $data)) {
             if (!is_string($data['date'])) return 'Date invalide';
-            $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $data['date']);
-            $errors = \DateTimeImmutable::getLastErrors();
+            $date = \DateTime::createFromFormat('!Y-m-d', $data['date']);
+            $errors = \DateTime::getLastErrors();
             if (!$date || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) || $date->format('Y-m-d') !== $data['date']) {
                 return 'Date invalide';
             }
