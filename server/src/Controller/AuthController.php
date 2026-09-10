@@ -52,10 +52,14 @@ class AuthController extends AbstractController
         if ($retryAfter = $this->loginRateLimiter->assertRegisterAllowed((string) $request->getClientIp())) {
             return new JsonResponse(['error' => 'Trop de tentatives. Réessayez plus tard.'], 429, ['Retry-After' => (string) $retryAfter]);
         }
+        $data = $this->getRequestData($request);
+        if (is_string($data)) {
+            return new JsonResponse(['error' => $data], 400);
+        }
 
-        $emailRaw = $request->request->get('email');
-        $passwordRaw = $request->request->get('password');
-        $typeRaw = $request->request->get('type');
+        $emailRaw = $data['email'] ?? null;
+        $passwordRaw = $data['password'] ?? null;
+        $typeRaw = $data['type'] ?? null;
 
         $email = is_string($emailRaw) ? mb_strtolower(trim($emailRaw)) : '';
         $password = is_string($passwordRaw) ? $passwordRaw : '';
@@ -77,7 +81,7 @@ class AuthController extends AbstractController
             return new JsonResponse(['error' => 'Cet email est déjà utilisé'], 400);
         }
 
-        $profile = $this->normalizeProfileData($request);
+        $profile = $this->normalizeProfileData($data);
         if (is_string($profile)) {
             return new JsonResponse(['error' => $profile], 400);
         }
@@ -91,7 +95,7 @@ class AuthController extends AbstractController
         $sitterData = [];
 
         if ($type === 'owner') {
-            $dogsJson = $request->request->get('dogs');
+            $dogsJson = $data['dogs'] ?? null;
             if (!is_string($dogsJson)) {
                 return new JsonResponse(['error' => 'Au moins un chien est requis'], 400);
             }
@@ -100,7 +104,7 @@ class AuthController extends AbstractController
                 return new JsonResponse(['error' => $dogs], 400);
             }
         } else {
-            $siretRaw     = $request->request->get('siret');
+            $siretRaw     = $data['siret'] ?? null;
             $siretInput   = is_string($siretRaw) ? $siretRaw : '';
             $siret        = $siretInput !== '' ? preg_replace('/[\s.-]+/', '', trim($siretInput)) : null;
 
@@ -115,7 +119,7 @@ class AuthController extends AbstractController
                 return new JsonResponse(['error' => 'Ce numéro SIRET est déjà utilisé'], 400);
             }
 
-            $sitterData = $this->normalizeSitterData($request);
+            $sitterData = $this->normalizeSitterData($data);
             if (is_string($sitterData)) {
                 return new JsonResponse(['error' => $sitterData], 400);
             }
@@ -497,11 +501,32 @@ class AuthController extends AbstractController
         return new JsonResponse($result);
     }
 
-    private function normalizeProfileData(Request $request): array|string
+    private function getRequestData(Request $request): array|string
+    {
+        $formData = $request->request->all();
+        if ($formData !== []) {
+            return $formData;
+        }
+
+        $content = trim($request->getContent());
+        if ($content === '') {
+            return [];
+        }
+
+        try {
+            $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return 'Payload invalide';
+        }
+
+        return is_array($data) ? $data : 'Payload invalide';
+    }
+
+    private function normalizeProfileData(array $data): array|string
     {
         $values = [];
         foreach (['nom', 'prenom', 'telephone', 'ville'] as $field) {
-            $raw = $request->request->get($field);
+            $raw = $data[$field] ?? null;
             if (!is_string($raw)) {
                 return 'Les informations personnelles sont invalides';
             }
@@ -549,10 +574,10 @@ class AuthController extends AbstractController
 
             $icad = strtoupper(preg_replace('/[\s.-]+/', '', trim($dogData['icadNumber'])) ?? '');
             $name = trim($dogData['nom']);
-            $sex = strtoupper(trim($dogData['sexe']));
+            $sex = $this->normalizeDogSex($dogData['sexe']);
             $breed = trim($dogData['race']);
-            $birthDate = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($dogData['dateNaissance']));
-            $dateErrors = \DateTimeImmutable::getLastErrors();
+            $birthDate = \DateTime::createFromFormat('!Y-m-d', trim($dogData['dateNaissance']));
+            $dateErrors = \DateTime::getLastErrors();
 
             if (preg_match('/^(?:\d{15}|[A-Z]{3}\d{3}|\d{6}[A-Z]{3})$/', $icad) !== 1) {
                 return 'Numéro ICAD invalide pour le chien ' . ($index + 1);
@@ -585,13 +610,22 @@ class AuthController extends AbstractController
         return $normalized;
     }
 
-    private function normalizeSitterData(Request $request): array|string
+    private function normalizeDogSex(string $sex): string
     {
-        $bioRaw = $request->request->get('bio');
-        $servicesRaw = $request->request->get('services');
-        $priceRaw = $request->request->get('price_per_hour');
-        $availabilityRaw = $request->request->get('is_available');
-        $experienceRaw = $request->request->get('experience_years');
+        return match (mb_strtolower(trim($sex))) {
+            'm', 'male', 'mâle', 'masculin' => 'M',
+            'f', 'female', 'femelle', 'féminin' => 'F',
+            default => strtoupper(trim($sex)),
+        };
+    }
+
+    private function normalizeSitterData(array $data): array|string
+    {
+        $bioRaw = $data['bio'] ?? null;
+        $servicesRaw = $data['services'] ?? null;
+        $priceRaw = $data['price_per_hour'] ?? null;
+        $availabilityRaw = $data['is_available'] ?? null;
+        $experienceRaw = $data['experience_years'] ?? null;
 
         if (!is_string($bioRaw) || !is_string($servicesRaw) || !is_string($priceRaw)) {
             return 'Les informations professionnelles sont invalides';
