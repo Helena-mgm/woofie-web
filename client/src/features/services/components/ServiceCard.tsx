@@ -120,11 +120,16 @@ export function ServiceCard({ sitter }: { sitter: DogSitter }) {
           </ul>
         )}
       </div>
-      <div className="flex flex-col items-end gap-2">
-        <p className="text-xs text-[#A0522D]">
+      <div className="flex flex-col items-stretch gap-2 sm:w-48 sm:items-end">
+        <p className="text-center text-xs text-[#A0522D] sm:text-right">
           ⭐ {sitter.rating?.toFixed(1) ?? "4.5"} ({sitter.reviews_count ?? 0} avis)
         </p>
-        <Button size="sm" onClick={handleContact} disabled={starting}>
+        <Button
+          onClick={handleContact}
+          disabled={starting}
+          className="w-full gap-2 shadow-[0_10px_20px_rgba(210,105,30,0.25)]"
+        >
+          <span aria-hidden>💬</span>
           {starting ? 'Chargement…' : 'Écrire un message'}
         </Button>
       </div>
