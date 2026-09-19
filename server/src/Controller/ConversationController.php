@@ -233,9 +233,19 @@ class ConversationController extends AbstractController
         if (!$user) {
             return $this->json(['error' => 'Vous devez être connecté.'], 401);
         }
-        if (!$user->isAdmin()) {
+
+        $isParticipant = $conversation->getParticipants()->contains($user);
+        if (!$user->isAdmin() && !$isParticipant) {
             return $this->json(['error' => 'Accès refusé'], 403);
         }
+
+        if (!$user->isAdmin() && $conversation->getType() === 'group') {
+            $group = $this->em->getRepository(Group::class)->findOneBy(['conversation' => $conversation]);
+            if ($group && $group->getOwner()->getId() !== $user->getId()) {
+                return $this->json(['error' => 'Seul le propriétaire du groupe peut le supprimer. Vous pouvez le quitter.'], 403);
+            }
+        }
+
         $this->em->remove($conversation);
         $this->em->flush();
         return $this->json(['success' => true]);

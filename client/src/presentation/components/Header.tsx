@@ -165,7 +165,7 @@ export function Header() {
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                     className="flex items-center gap-2 rounded-full px-3 py-1.5 transition-colors hover:bg-gray-50"
                   >
-                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#D2691E] to-[#8B4513] flex items-center justify-center text-white font-bold shadow-md">
+                    <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#D2691E] to-[#8B4513] flex items-center justify-center text-white font-bold shadow-md">
                       {authenticatedUser?.photo_path ? (
                         <Image src={getImageUrl(authenticatedUser.photo_path)} alt={avatarAlt} fill className="object-cover" sizes="36px" />
                       ) : (

@@ -62,23 +62,25 @@ function DogCard({ dog, onEdit, onDelete, onMarkLost, onMarkFound }: DogCardProp
         </div>
       )}
 
-      <div className="h-44 bg-gradient-to-br from-[#FFF2E0] to-[#FFD9A6] flex items-center justify-center overflow-hidden relative">
-        {dog.photo ? (
-          <Image src={getImageUrl(dog.photo)} alt={dog.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, 320px" />
-        ) : (
-          <span className="text-6xl opacity-40">🐕</span>
-        )}
-      </div>
-
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-1">
+      <div className="flex flex-col items-center gap-2 bg-gradient-to-br from-[#FFF2E0] to-[#FFD9A6] px-4 pt-7 pb-4">
+        <div className="relative h-24 w-24 overflow-hidden rounded-full bg-white ring-4 ring-white shadow-md">
+          {dog.photo ? (
+            <Image src={getImageUrl(dog.photo)} alt={dog.name} fill className="object-cover" sizes="96px" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-5xl opacity-40">🐕</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
           <h3 className="text-lg font-bold text-gray-900">{dog.name}</h3>
           {dog.sexe && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 flex-shrink-0">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/70 text-gray-600 flex-shrink-0">
               {dog.sexe === 'M' ? '♂' : '♀'}
             </span>
           )}
         </div>
+      </div>
+
+      <div className="p-4 pt-3 text-center">
         {dog.race && <p className="text-sm text-gray-500">{dog.race}{dog.taille ? ` · ${dog.taille}` : ''}</p>}
         {dog.age != null && <p className="text-xs text-gray-400 mt-0.5">{dog.age} an{dog.age > 1 ? 's' : ''}</p>}
         <p className="text-xs text-gray-300 mt-1">ICAD : {dog.icadNumber}</p>
