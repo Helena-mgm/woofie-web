@@ -74,8 +74,16 @@ export function ServiceCard({ sitter }: { sitter: DogSitter }) {
       <div className="flex-1 space-y-2 text-sm text-[#3E2A1B]">
         <header className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-base font-semibold text-[#8B4513]">
+            <p className="flex items-center gap-1.5 text-base font-semibold text-[#8B4513]">
               {sitter.prenom} {sitter.nom}
+              {sitter.is_verified && (
+                <span
+                  title="Sitter vérifié"
+                  className="rounded-full bg-[#E7F3FF] px-2 py-0.5 text-[10px] font-semibold text-[#1D6FB8]"
+                >
+                  Vérifié ✓
+                </span>
+              )}
             </p>
             <p className="text-xs text-[#A0522D]">{sitter.city}</p>
           </div>

@@ -1,16 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input } from '@/presentation/components/ui';
 import { AuthLayout } from '@/presentation/components/auth/AuthLayout';
 import { PasswordInput } from '@/presentation/components/auth/PasswordInput';
 import { AnimatedDog } from '@/presentation/components/AnimatedDog';
-import { useLogin } from '@/presentation/hooks/useLogin';
+import { useLogin, sanitizeRedirectPath } from '@/presentation/hooks/useLogin';
 import { apiGet, tokenManager } from '@/shared/lib/api';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = sanitizeRedirectPath(searchParams.get('redirect'));
   const {
     identifier, setIdentifier,
     password, setPassword,
@@ -19,7 +29,7 @@ export default function LoginPage() {
     isPasswordFocused, setIsPasswordFocused,
     showPassword, setShowPassword,
     handleSubmit
-  } = useLogin();
+  } = useLogin(redirectTo);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +45,7 @@ export default function LoginPage() {
       }
 
       if (response.ok) {
-        router.replace('/community');
+        router.replace(redirectTo);
       } else {
         tokenManager.remove();
       }
@@ -46,7 +56,7 @@ export default function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, redirectTo]);
 
   return (
     <AuthLayout

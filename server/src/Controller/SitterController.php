@@ -33,7 +33,7 @@ class SitterController extends AbstractController
         $cityFilter = $request->query->get('city');
         $availableFilter = $request->query->get('available');
 
-        $sitters = $repository->findBy(['isVerified' => true]);
+        $sitters = $repository->findAll();
 
         $filtered = array_filter($sitters, static function (Sitter $sitter) use ($serviceFilter, $cityFilter, $availableFilter) {
             if ($availableFilter !== null) {

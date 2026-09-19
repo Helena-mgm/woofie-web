@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { EventFilters } from "@/presentation/components/events/EventFilters";
 import { EventList } from "@/presentation/components/events/EventList";
+import { EventCalendar } from "@/presentation/components/events/EventCalendar";
 import { ViewToggle } from "@/presentation/components/events/ViewToggle";
 import { useEvents } from "@/presentation/hooks/useEvents";
 import { useAuth } from "@/presentation/hooks/useAuth";
@@ -83,7 +84,14 @@ export default function EventsPage() {
         )}
 
         {!loading && viewMode === "calendar" && (
-          <CalendarPlaceholder count={filteredUpcoming.length} />
+          <EventCalendar
+            events={[...filteredUpcoming, ...filteredPast]}
+            currentUserId={user?.id}
+            onJoin={joinEvent}
+            onLeave={leaveEvent}
+            onEdit={updateEvent}
+            onDelete={deleteEvent}
+          />
         )}
       </div>
 
@@ -93,18 +101,6 @@ export default function EventsPage() {
           onCreate={createEvent}
         />
       )}
-    </div>
-  );
-}
-
-function CalendarPlaceholder({ count }: { count: number }) {
-  return (
-    <div className="rounded-3xl border border-[#F1E5D4] bg-white p-12 text-center text-[#6B4A2B] shadow-sm">
-      <div className="text-6xl">📅</div>
-      <p className="mt-4 text-lg font-semibold">Vue calendrier</p>
-      <p className="text-sm">
-        {count} événement{count !== 1 ? "s" : ""} prévu{count !== 1 ? "s" : ""} — intégration à venir.
-      </p>
     </div>
   );
 }
