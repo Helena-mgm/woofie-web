@@ -209,7 +209,7 @@ class EventController extends AbstractController
         $event = $this->eventRepo->find($id);
         if (!$event) return $this->json(['error' => 'Événement introuvable'], 404);
 
-        if ($event->getOrganizer()->getId() !== $user->getId()) {
+        if ($event->getOrganizer()->getId() !== $user->getId() && !$user->isAdmin()) {
             return $this->json(['error' => 'Accès refusé'], 403);
         }
 
@@ -239,6 +239,10 @@ class EventController extends AbstractController
 
         $existing = $this->em->getRepository(EventAttendee::class)
             ->findOneBy(['event' => $event, 'user' => $user]);
+
+        if (!$existing && $event->isPrivate()) {
+            return $this->json(['error' => 'Cet événement est privé, seul l\'organisateur peut y ajouter des participants'], 403);
+        }
 
         if (!$existing) {
             if ($event->getMaxAttendees() !== null) {

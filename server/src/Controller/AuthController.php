@@ -299,10 +299,26 @@ class AuthController extends AbstractController
             : ($ownerRepository->findByTelephone($normalizedIdentifier)?->getUser()
                 ?? $sitterRepository->findByTelephone($normalizedIdentifier)?->getUser());
 
-        if (!$user || !$hasher->isPasswordValid($user, $password)) {
+        if (!$user) {
+            // Still run a password hash verification of comparable cost so the response
+            // time doesn't reveal whether the identifier is registered (timing side-channel).
+            $this->burnPasswordHashingTime($hasher, $password);
+
             return new JsonResponse([
                 'error' => 'Identifiants invalides',
             ], 401);
+        }
+
+        if (!$hasher->isPasswordValid($user, $password)) {
+            return new JsonResponse([
+                'error' => 'Identifiants invalides',
+            ], 401);
+        }
+
+        if ($user->isBanned()) {
+            return new JsonResponse([
+                'error' => 'Ce compte a été suspendu.',
+            ], 403);
         }
 
         $this->loginRateLimiter->resetLogin($rateKey);
@@ -687,5 +703,24 @@ class AuthController extends AbstractController
                 @unlink($publicDir . $path);
             }
         }
+    }
+
+    private static ?string $dummyPasswordHash = null;
+
+    /**
+     * Runs a password verification of the same cost as a real login attempt, against a
+     * fixed dummy hash, so that an unknown identifier takes as long to reject as a known
+     * identifier with a wrong password.
+     */
+    private function burnPasswordHashingTime(UserPasswordHasherInterface $hasher, string $password): void
+    {
+        $dummy = new User();
+
+        if (self::$dummyPasswordHash === null) {
+            self::$dummyPasswordHash = $hasher->hashPassword($dummy, 'woofie-constant-time-placeholder');
+        }
+
+        $dummy->setPassword(self::$dummyPasswordHash);
+        $hasher->isPasswordValid($dummy, $password);
     }
 }
