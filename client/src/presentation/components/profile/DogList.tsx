@@ -15,26 +15,30 @@ export function DogList({ dogs }: DogListProps) {
         MES CHIENS ({dogs.length})
       </h3>
       
-      <div className="grid grid-cols-3 gap-1">
+      <div className="flex flex-wrap gap-4">
         {dogs.map((dog, index) => (
           <motion.div
             key={dog.id}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.05 }}
+            className="flex w-20 flex-col items-center gap-1.5"
           >
-            <Link href={`/dog/${dog.id}`}>
-              <div className="relative aspect-square overflow-hidden bg-gray-100 group cursor-pointer">
+            <Link href={`/dog/${dog.id}`} className="group">
+              <div className="relative aspect-square w-16 h-16 overflow-hidden rounded-full bg-gray-100 ring-2 ring-offset-2 ring-[#F1E5D4] cursor-pointer">
                 <Image
                   src={getImageUrl(dog.photoPath)}
                   alt={dog.nom}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  sizes="(max-width: 768px) 33vw, 200px"
+                  sizes="64px"
                 />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/10 transition-colors" />
               </div>
             </Link>
+            <span className="w-full truncate text-center text-xs font-medium text-gray-700">
+              {dog.nom}
+            </span>
           </motion.div>
         ))}
       </div>
