@@ -202,7 +202,7 @@ class DogController extends AbstractController
         if (!$dog) return $this->json(['error' => 'Chien introuvable'], 404);
 
         $owner = $this->ownerRepo->findOneBy(['user' => $user]);
-        if (!$owner || $dog->getOwner()?->getId() !== $owner->getId()) {
+        if (!$user->isAdmin() && (!$owner || $dog->getOwner()?->getId() !== $owner->getId())) {
             return $this->json(['error' => 'Accès refusé'], 403);
         }
 

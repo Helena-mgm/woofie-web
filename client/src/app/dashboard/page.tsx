@@ -171,6 +171,9 @@ export default function DashboardPage() {
             <ActionCard emoji="💬" title="Messages" description="Discutez avec votre dog-sitter ou WoofieBot." href="/messages" />
             <ActionCard emoji="📰" title="Communauté" description="Partagez des photos et astuces avec la communauté." href="/community" />
             <ActionCard emoji="🗺️" title="Carte" description="Trouvez des parcs et espaces canins autour de vous." href="/map" />
+            {user.is_admin && (
+              <ActionCard emoji="🛡️" title="Administration" description="Gérez les utilisateurs, mots clés et modération." href="/admin" />
+            )}
             <ActionCard emoji="⚙️" title="Paramètres" description="Gérez votre compte et vos préférences." href="/dashboard/settings" />
           </div>
 
