@@ -68,7 +68,7 @@ services:
     depends_on:
       - db
     command: >
-      bash -c "mkdir -p var public/uploads/owners public/uploads/dogs public/uploads/posts &&
+      bash -c "mkdir -p var public/uploads/owners public/uploads/dogs public/uploads/posts public/uploads/sitters &&
                chown -R www-data:www-data var public/uploads || true &&
                chmod -R 0775 var public/uploads || true &&
                php bin/console doctrine:migrations:migrate --no-interaction &&
