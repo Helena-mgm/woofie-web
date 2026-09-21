@@ -17,19 +17,19 @@ export function EventAttendeesModal({ event, open, onClose }: Props) {
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
         <h3 className="text-lg font-bold mb-4">Participants — {event.title}</h3>
         {list.length === 0 ? (
-          <p className="text-gray-500">Personne n&apos;est encore inscrit.</p>
+          <p className="text-gray-600">Personne n&apos;est encore inscrit.</p>
         ) : (
           <ul className="space-y-2">
             {list.map((id) => (
               <li key={id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">{String(id)}</div>
+                  <div className="h-8 w-8 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center">{String(id)}</div>
                   <div>
-                    <div className="font-medium">Utilisateur {id}</div>
-                    <div className="text-xs text-gray-400">Profil public</div>
+                    <div className="font-medium text-gray-900">Utilisateur {id}</div>
+                    <div className="text-xs text-gray-600">Profil public</div>
                   </div>
                 </div>
-                <div className="text-sm text-gray-500">—</div>
+                <div className="text-sm text-gray-600">—</div>
               </li>
             ))}
           </ul>

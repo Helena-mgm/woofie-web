@@ -204,6 +204,14 @@ export function Header() {
                         </svg>
                         <span className="font-medium text-gray-700">Paramètres</span>
                       </Link>
+                      {authenticatedUser?.is_admin && (
+                        <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                          <span className="font-medium text-gray-700">Panel admin</span>
+                        </Link>
+                      )}
                       <hr className="my-1 border-gray-200" />
                       <button
                         onClick={() => { setIsMenuOpen(false); logout(); }}
@@ -347,6 +355,12 @@ export function Header() {
                 className="flex items-center justify-center gap-2 rounded-full border border-[#F6E5D4] px-4 py-2 text-sm font-semibold text-[#8B4513] transition hover:bg-white">
                 ⚙️ Paramètres
               </Link>
+              {authenticatedUser?.is_admin && (
+                <Link href="/admin" onClick={() => setIsMobileNavOpen(false)}
+                  className="flex items-center justify-center gap-2 rounded-full border border-[#F6E5D4] px-4 py-2 text-sm font-semibold text-[#8B4513] transition hover:bg-white">
+                  🛡️ Panel admin
+                </Link>
+              )}
               <button
                 onClick={() => { setIsMobileNavOpen(false); logout(); }}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[#8B4513] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#A0522D]"
