@@ -127,10 +127,10 @@ prod-bash:
 	$(DC_PROD) exec symfony bash
 
 prod-migrate:
-	$(DC_PROD) exec symfony php bin/console doctrine:migrations:migrate --no-interaction
+	$(DC_PROD) exec -u www-data symfony php bin/console doctrine:migrations:migrate --no-interaction
 
 prod-cache-clear:
-	$(DC_PROD) exec symfony php bin/console cache:clear --env=prod
+	$(DC_PROD) exec -u www-data symfony php bin/console cache:clear --env=prod
 
 prod-dbshell:
 	$(DC_PROD) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
@@ -144,5 +144,5 @@ prod-update:
 	git pull origin main
 	$(DC_PROD) build --no-cache
 	$(DC_PROD) up -d --force-recreate
-	$(DC_PROD) exec symfony php bin/console doctrine:migrations:migrate --no-interaction
+	$(DC_PROD) exec -u www-data symfony php bin/console doctrine:migrations:migrate --no-interaction
 	@echo "✅ Mise à jour terminée"

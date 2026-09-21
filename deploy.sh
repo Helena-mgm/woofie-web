@@ -142,9 +142,9 @@ sleep 45
 
 echo ""
 info "Exécution des migrations Doctrine..."
-docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec symfony \
+docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec -u www-data symfony \
     php bin/console doctrine:migrations:migrate --no-interaction
-docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec symfony \
+docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec -u www-data symfony \
     php bin/console cache:clear --env=prod
 
 echo ""
