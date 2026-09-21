@@ -80,7 +80,6 @@ export async function toggleCommentLike(postId: number, commentId: number) {
   return response.json() as Promise<{ isLiked: boolean; likesCount: number }>;
 }
 
-/** Chiens de l'utilisateur connecté — pour le tagger dans un post */
 export async function fetchMyDogs(): Promise<MyDog[]> {
   try {
     const response = await apiRequest("/api/profile/dogs");
@@ -99,7 +98,6 @@ export async function fetchMyDogs(): Promise<MyDog[]> {
   }
 }
 
-/** Recherche d'utilisateurs pour les @mentions */
 export async function searchUsers(
   query: string
 ): Promise<Array<{ id: number; nom: string; prenom?: string; photo_path?: string }>> {

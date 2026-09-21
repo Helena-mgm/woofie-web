@@ -32,7 +32,6 @@ interface Props {
 const CATEGORIES: Event["category"][] = ["Rencontre", "Formation", "Compétition", "Charity"];
 const EMOJIS = ["🐾", "🏃", "🎓", "🏆", "❤️", "🎪", "🐕", "🌳", "🚑", "🎉", "🏅", "🤝"];
 
-/** Formate un résultat Nominatim en ligne lisible courte */
 function formatSuggestion(s: NominatimResult): { main: string; sub: string } {
   const a = s.address ?? {};
   const city = a.city ?? a.town ?? a.village ?? "";
@@ -47,10 +46,8 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Lieu libre (affiché sur la carte)
   const [locationName, setLocationName] = useState("");
 
-  // Géolocalisation optionnelle
   const [geoQuery, setGeoQuery]       = useState("");
   const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
   const [loadingGeo, setLoadingGeo]   = useState(false);
@@ -75,7 +72,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
   const set = <K extends keyof CreatePayload>(key: K, value: CreatePayload[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
-  // Recherche Nominatim avec addressdetails
   const searchGeo = (q: string) => {
     setGeoQuery(q);
     setPickedGeo(null);
@@ -218,7 +214,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
                 </label>
 
                 {pickedGeo ? (
-                  /* Lieu sélectionné */
                   <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                     <span className="text-emerald-600 text-sm">✓</span>
                     <span className="flex-1 text-sm text-emerald-800 font-medium truncate">{pickedGeo.label}</span>
@@ -231,7 +226,6 @@ export function CreateEventModal({ onClose, onCreate }: Props) {
                     </button>
                   </div>
                 ) : (
-                  /* Champ de recherche */
                   <div className="relative">
                     <input
                       value={geoQuery}

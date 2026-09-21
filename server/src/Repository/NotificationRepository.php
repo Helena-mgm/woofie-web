@@ -20,7 +20,7 @@ class NotificationRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('n')
             ->where('n.user = :user')
             ->setParameter('user', $user)
-            ->orderBy('n.isRead', 'ASC')    // non lues d'abord
+            ->orderBy('n.isRead', 'ASC')
             ->addOrderBy('n.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()

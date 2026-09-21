@@ -37,14 +37,12 @@ class ProfileController extends AbstractController
             return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Find owner by user ID
         $owner = $ownerRepository->findOneBy(['user' => $user]);
         
         if (!$owner) {
             return new JsonResponse(['error' => 'Owner profile not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Get all dogs for this owner
         $dogs = $owner->getDogs();
         $data = [];
 

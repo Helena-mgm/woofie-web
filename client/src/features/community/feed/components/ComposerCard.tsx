@@ -12,7 +12,6 @@ import type { User } from "@/shared/types/forum";
 import { fetchMyDogs, type MyDog } from "../api/feedApi";
 import type { EmojiClickData } from "emoji-picker-react";
 
-// Picker complet lazy-loadé (lourd, hors SSR)
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ssr: false,
   loading: () => (
@@ -20,7 +19,6 @@ const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ),
 });
 
-// Type interne pour le dropdown @ unifié (personnes + chiens)
 type MentionItem =
   | { kind: "user"; id: number; name: string; city?: string; photo_path?: string }
   | { kind: "dog"; id: number; name: string; breed?: string; photo_path?: string; ownerName: string };
@@ -48,7 +46,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
     fetchMyDogs().then(setMyDogs).catch(() => {});
   }, []);
 
-  // Ferme l'emoji picker si clic en dehors
   useEffect(() => {
     if (!showEmojiPicker) return;
     function onClickOutside(e: MouseEvent) {
@@ -60,7 +57,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [showEmojiPicker]);
 
-  // Suggestions @ unifiées : personnes + chiens du propriétaire
   const ownerName = author
     ? author.prenom
       ? `${author.prenom} ${author.nom}`
@@ -244,7 +240,6 @@ export function ComposerCard({ author, knownUsers = [], onPublish }: ComposerCar
                     >
                       <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-[#F1E5D4] bg-[#FFF0E0]">
                         {item.photo_path ? (
-                          // Image depuis le backend — URL blob/dynamique incompatible avec next/image sans domaine configuré
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={getImageUrl(item.photo_path)}

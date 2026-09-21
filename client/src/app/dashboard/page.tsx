@@ -107,12 +107,10 @@ export default function DashboardPage() {
 
   const loadStats = useCallback(async () => {
     if (!user) return;
-    // Load dog count for owners
     if (user.type === 'owner') {
       const { ok, data } = await apiGet('/api/profile/dogs');
       if (ok && Array.isArray(data)) setStats(s => ({ ...s, dogsCount: data.length }));
     }
-    // Conversations count
     const { ok: cok, data: cdata } = await apiGet('/api/conversations');
     if (cok && Array.isArray(cdata)) setStats(s => ({ ...s, conversationsCount: cdata.length }));
   }, [user]);

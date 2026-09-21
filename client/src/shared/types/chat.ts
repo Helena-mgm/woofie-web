@@ -1,4 +1,3 @@
-// Types pour le système de chat
 export interface ChatUser {
   id: number;
   name: string;
@@ -33,7 +32,7 @@ export interface Conversation {
     createdAt: string;
   };
   unreadCount: number;
-  name?: string; // For groups
+  name?: string;
   avatar?: string;
   createdAt: Date;
   isBlocked?: boolean;
@@ -80,7 +79,6 @@ export type WSMessage =
   | { type: 'call'; data: CallSession }
   | { type: 'user_status'; data: { userId: number; isOnline: boolean } };
 
-/** Payloads envoyés au serveur (sous-ensemble de WSMessage) */
 export type OutboundWSMessage =
   | { type: 'message'; data: { conversationId: number; content: string } }
   | { type: 'typing'; data: { conversationId: number; userId: number } }

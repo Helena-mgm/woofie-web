@@ -7,10 +7,6 @@ interface EventsApiResponse {
   past: Event[];
 }
 
-/**
- * Hook principal pour les événements.
- * Appelle le backend Symfony /api/events (JWT optionnel pour la lecture).
- */
 export function useEvents(userId?: number) {
   const [upcoming, setUpcoming] = useState<Event[]>([]);
   const [past, setPast]         = useState<Event[]>([]);
@@ -27,7 +23,6 @@ export function useEvents(userId?: number) {
       setUpcoming(data.upcoming ?? []);
       setPast(data.past ?? []);
     } catch {
-      // réseau inaccessible : liste vide
     } finally {
       setLoading(false);
     }

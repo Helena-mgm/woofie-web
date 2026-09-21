@@ -91,8 +91,6 @@ class Dog
         $this->photos = new ArrayCollection();
     }
 
-    // Getters and Setters
-
     public function getId(): ?int
     {
         return $this->id;

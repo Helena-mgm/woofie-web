@@ -16,10 +16,8 @@ interface DogFormData {
   description: string; dateNaissance: string; photo: string;
 }
 
-/** Payload typé pour la création d'un chien */
 type CreateDogPayload = Omit<DogProfile, 'id' | 'isLost' | 'createdAt' | 'age' | 'ownerName' | 'ownerId' | 'lostSince' | 'lostLocation' | 'lostLat' | 'lostLng' | 'lostContact' | 'lostDescription'>;
 
-/** Payload typé pour la mise à jour d'un chien */
 type UpdateDogPayload = Partial<Omit<DogProfile, 'id' | 'isLost' | 'createdAt'>>;
 
 const emptyForm: DogFormData = {

@@ -74,8 +74,6 @@ class JwtService
 
             $user = $this->userRepository->find((int) $decoded->sub);
 
-            // A banned user's existing JWT stays cryptographically valid until it expires,
-            // so re-check ban status on every request instead of only at login time.
             if ($user && $user->isBanned()) {
                 return null;
             }

@@ -121,9 +121,6 @@ class Event
 
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
-    /**
-     * Sérialise l'événement en tableau pour l'API JSON.
-     */
     public function toArray(?User $currentUser = null): array
     {
         $accepted    = $this->attendees->filter(fn(EventAttendee $a) => $a->getStatus() === 'accepted');
@@ -141,8 +138,7 @@ class Event
             }
         }
 
-        // Récupérer le nom de l'organisateur (Owner ou Sitter)
-        $organizerName  = $this->organizer->getEmail(); // fallback
+        $organizerName  = $this->organizer->getEmail();
         $organizerPhoto = null;
         if (method_exists($this->organizer, 'getOwner') && $this->organizer->getOwner()) {
             $owner = $this->organizer->getOwner();

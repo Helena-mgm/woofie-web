@@ -1,7 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
 
-// Use relative path - nginx will serve it
 const walkingDogGif = '/images/walking-dog.gif';
 
 const Loading: React.FC = () => {

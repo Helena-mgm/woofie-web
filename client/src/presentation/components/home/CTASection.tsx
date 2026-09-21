@@ -5,10 +5,6 @@ interface CTASectionProps {
   isAuthenticated: boolean;
 }
 
-/**
- * Section Call-to-Action
- * Règle: composant simple < 50 lignes
- */
 export function CTASection({ isAuthenticated }: CTASectionProps) {
   const ctaText = isAuthenticated ? 'Rejoindre le Forum 🐾' : 'Créer mon compte 🐾';
   const ctaLink = isAuthenticated ? '/community' : '/register';

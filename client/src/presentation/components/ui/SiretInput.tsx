@@ -8,13 +8,6 @@ export interface SiretInputProps extends Omit<InputHTMLAttributes<HTMLInputEleme
   onValidation?: (result: SiretValidationResult) => void;
 }
 
-/**
- * Composant Input pour numéro SIRET
- * - Format français : XXX XXX XXX XXXXX (14 chiffres)
- * - Validation automatique avec algorithme de Luhn
- * - Vérification via API Sirene (INSEE) pour confirmer existence
- * - Affiche le nom de l'entreprise si trouvée
- */
 const SIRET_CHECK_ENABLED = process.env.NEXT_PUBLIC_SIRET_CHECK !== 'false';
 const SIRET_DEBUG_ENABLED = process.env.NEXT_PUBLIC_SIRET_DEBUG === 'true';
 

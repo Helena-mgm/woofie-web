@@ -1,9 +1,5 @@
 import { motion } from 'framer-motion';
 
-/**
- * Configuration des features
- * Règle: Données séparées de la logique
- */
 interface Feature {
   icon: string;
   title: string;
@@ -50,10 +46,6 @@ const features: Feature[] = [
   },
 ];
 
-/**
- * Section des fonctionnalités principales
- * Règle: < 100 lignes, responsabilité unique
- */
 export function FeaturesSection() {
   return (
     <section className="bg-white/50 backdrop-blur-sm py-12 sm:py-16 lg:py-20 relative z-10">

@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
-# ============================================================
-# 🐾 deploy.sh — Script de déploiement Woofie en production
-# ============================================================
 
 set -euo pipefail
 
 ENV_FILE=".env.prod"
 
-# ── Couleurs ──────────────────────────────────────────────
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info()    { echo -e "${GREEN}▶  $1${NC}"; }
 warning() { echo -e "${YELLOW}⚠  $1${NC}"; }
@@ -17,6 +13,10 @@ info "Vérification des prérequis..."
 
 command -v docker >/dev/null 2>&1 || error "Docker n'est pas installé."
 docker compose version >/dev/null 2>&1 || error "Docker Compose v2 requis (plugin 'docker compose')."
+docker info >/dev/null 2>&1 || error "Accès à Docker refusé.
+    → Ajoutez votre utilisateur au groupe Docker : sudo usermod -aG docker \"$USER\"
+    → Déconnectez-vous puis reconnectez-vous (ou redémarrez votre session SSH)
+    → Relancez ensuite ./deploy.sh"
 
 if [ ! -f "${ENV_FILE}" ]; then
     error "Fichier .env.prod manquant !
@@ -25,7 +25,6 @@ if [ ! -f "${ENV_FILE}" ]; then
    → Relancez ce script"
 fi
 
-# Vérifier que les placeholders ont bien été remplacés
 if grep -qE "CHANGEZ_|CHANGE_ME" "${ENV_FILE}"; then
     error "Le fichier .env.prod contient encore des valeurs placeholder (CHANGEZ_...).
    Éditez-le et renseignez vos vraies valeurs, puis relancez."
@@ -87,7 +86,6 @@ fi
 
 mkdir -p ./certbot/conf ./certbot/www
 
-# ── 1. Certificat SSL (seulement au premier déploiement) ──
 if [ ! -f "$CERT_PATH" ]; then
     echo ""
     info "Premier déploiement — obtention du certificat SSL Let's Encrypt..."
@@ -106,7 +104,6 @@ if [ ! -f "$CERT_PATH" ]; then
 
     sleep 3
 
-    # Obtention du certificat via webroot (le renouvellement utilisera aussi webroot)
     info "Demande du certificat à Let's Encrypt (email: ${CERTBOT_EMAIL})..."
     docker run --rm \
         -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
@@ -124,7 +121,6 @@ if [ ! -f "$CERT_PATH" ]; then
    - Aucun autre service sur le port 80"
         }
 
-    # Nettoyage du nginx temporaire
     docker stop nginx-certbot-init && docker rm nginx-certbot-init
     echo ""
     info "Certificat SSL obtenu avec succès !"
@@ -132,22 +128,18 @@ else
     info "Certificat SSL déjà présent — étape SSL ignorée."
 fi
 
-# ── 2. Build des images Docker ────────────────────────────
 echo ""
 info "Build des images Docker (peut prendre 5-10 min la première fois)..."
 docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" build --no-cache
 
-# ── 3. Démarrage de la stack ──────────────────────────────
 echo ""
 info "Démarrage de la stack de production..."
 docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" up -d
 
-# ── 4. Attente que les services soient prêts ──────────────
 echo ""
 info "Attente que les services démarrent (45s)..."
 sleep 45
 
-# ── 5. Migrations de base de données ─────────────────────
 echo ""
 info "Exécution des migrations Doctrine..."
 docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec symfony \
@@ -155,14 +147,12 @@ docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec symfony
 docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec symfony \
     php bin/console cache:clear --env=prod
 
-# ── 6. Chargement du modèle Ollama (WoofieBot) ───────────
 echo ""
 info "Chargement du modèle Ollama ${OLLAMA_MODEL} (peut prendre plusieurs minutes)..."
 docker compose -f docker-compose.prod.yaml --env-file "${ENV_FILE}" exec ollama \
     ollama pull "${OLLAMA_MODEL}" || \
     warning "Pull Ollama échoué — lancez manuellement : make prod-ollama"
 
-# ── Résumé ────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}✅ Woofie est en production sur ${APP_URL}.${NC}"
 echo "SSL Let's Encrypt est actif et son renouvellement est automatisé."

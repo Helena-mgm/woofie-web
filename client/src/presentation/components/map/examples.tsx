@@ -3,10 +3,6 @@
 import { Map } from '@/presentation/components/map';
 import { MapEvent } from '@/shared/types/map';
 
-/**
- * Exemple simple d'utilisation du composant Map
- * Peut être importé et utilisé dans n'importe quelle page
- */
 export function SimpleMapExample() {
   const events: MapEvent[] = [
     {
@@ -25,9 +21,6 @@ export function SimpleMapExample() {
   );
 }
 
-/**
- * Exemple avec POI activés
- */
 export function MapWithPOI() {
   const events: MapEvent[] = [
     {
@@ -46,9 +39,6 @@ export function MapWithPOI() {
   );
 }
 
-/**
- * Exemple avec position personnalisée (Marseille)
- */
 export function MapCustomLocation() {
   const events: MapEvent[] = [
     {

@@ -1,7 +1,3 @@
-/**
- * Empreintes décoratives – animations CSS pures (pas de framer-motion)
- * → compositor GPU, zéro overhead JS runtime
- */
 interface PawConfig {
   top?: string;
   bottom?: string;

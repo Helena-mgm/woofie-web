@@ -122,7 +122,6 @@ class HttpClient {
     try {
       data = await response.json();
     } catch {
-      // Response has no JSON body
       data = null;
     }
 
@@ -177,7 +176,6 @@ class HttpClient {
         throw error;
       }
 
-      // Network error
       throw new ApiError(ERROR_MESSAGES.network, 0);
     } finally {
       cleanup();

@@ -16,9 +16,6 @@ class OwnerRepository extends ServiceEntityRepository
         parent::__construct($registry, Owner::class);
     }
 
-    /**
-     * Trouve un owner par numéro de téléphone
-     */
     public function findByTelephone(string $telephone): ?Owner
     {
         return $this->createQueryBuilder('o')
@@ -29,8 +26,6 @@ class OwnerRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve les owners par ville
-     *
      * @return Owner[]
      */
     public function findByVille(string $ville): array

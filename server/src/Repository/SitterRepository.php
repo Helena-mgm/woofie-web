@@ -17,8 +17,6 @@ class SitterRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve tous les sitters en attente de vérification
-     *
      * @return Sitter[]
      */
     public function findPending(): array
@@ -32,8 +30,6 @@ class SitterRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve tous les sitters vérifiés
-     *
      * @return Sitter[]
      */
     public function findVerified(): array
@@ -46,9 +42,6 @@ class SitterRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Trouve un sitter par numéro SIRET
-     */
     public function findBySiret(string $siret): ?Sitter
     {
         return $this->createQueryBuilder('s')
@@ -58,9 +51,6 @@ class SitterRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    /**
-     * Trouve un sitter par numéro de téléphone
-     */
     public function findByTelephone(string $telephone): ?Sitter
     {
         return $this->createQueryBuilder('s')

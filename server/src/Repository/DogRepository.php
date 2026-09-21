@@ -17,9 +17,6 @@ class DogRepository extends ServiceEntityRepository
         parent::__construct($registry, Dog::class);
     }
 
-    /**
-     * Trouve un chien par numéro ICAD
-     */
     public function findByIcadNumber(string $icadNumber): ?Dog
     {
         return $this->createQueryBuilder('d')
@@ -30,8 +27,6 @@ class DogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve tous les chiens d'un propriétaire
-     *
      * @return Dog[]
      */
     public function findByOwner(Owner $owner): array
@@ -45,8 +40,6 @@ class DogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve les chiens par type ICAD
-     *
      * @return Dog[]
      */
     public function findByIcadType(string $type): array

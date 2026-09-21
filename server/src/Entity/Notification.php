@@ -18,7 +18,6 @@ class Notification
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
-    /** event_join | event_leave | event_pending | event_approved | event_rejected */
     #[ORM\Column(type: 'string', length: 50)]
     private string $type;
 

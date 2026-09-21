@@ -59,8 +59,6 @@ class Owner
         $this->dogs = new ArrayCollection();
     }
 
-    // Getters and Setters
-
     public function getId(): ?int
     {
         return $this->id;
@@ -166,7 +164,6 @@ class Owner
     public function removeDog(Dog $dog): self
     {
         if ($this->dogs->removeElement($dog)) {
-            // set the owning side to null (unless already changed)
             if ($dog->getOwner() === $this) {
                 $dog->setOwner(null);
             }

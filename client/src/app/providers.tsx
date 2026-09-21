@@ -6,7 +6,6 @@ import { Header } from "@/presentation/components/Header";
 import { Footer } from "@/presentation/components/Footer";
 import { usePathname } from "next/navigation";
 
-// Routes où le Footer ne doit pas apparaître et où le layout est plein écran
 const FULLSCREEN_ROUTES = ["/map", "/messages"];
 
 function AppShell({ children }: { children: ReactNode }) {
@@ -30,10 +29,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 2 * 60 * 1000,       // données fraîches 2 min
-            gcTime: 5 * 60 * 1000,           // cache gardé 5 min
-            refetchOnWindowFocus: false,      // pas de re-fetch au focus
-            retry: 1,                         // 1 seule tentative en cas d'erreur
+            staleTime: 2 * 60 * 1000,
+            gcTime: 5 * 60 * 1000,
+            refetchOnWindowFocus: false,
+            retry: 1,
           },
         },
       })

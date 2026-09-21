@@ -5,10 +5,6 @@ interface ViewToggleProps {
   onViewChange: (mode: ViewMode) => void;
 }
 
-/**
- * Basculeur de vue (liste/calendrier)
- * Règle: composant simple < 30 lignes
- */
 export function ViewToggle({ viewMode, onViewChange }: ViewToggleProps) {
   return (
     <div className="flex gap-2 bg-white rounded-full p-1 shadow-md">

@@ -1,4 +1,3 @@
-// Export all custom hooks from a single entry point
 export { useAuth } from './useAuth';
 export { useForm } from './useForm';
 export { usePasswordToggle } from './usePasswordToggle';

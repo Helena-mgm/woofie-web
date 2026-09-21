@@ -1,14 +1,10 @@
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { apiPost, tokenManager } from '@/shared/lib/api';
 import { VALIDATION } from '@/infrastructure/config/constants';
 import type { AuthResponse } from '@/types';
 
 const DEFAULT_REDIRECT = '/community';
 
-// Only ever follow a same-origin, relative path: reject absolute/protocol-relative
-// URLs (e.g. "https://evil.com" or "//evil.com") to avoid an open redirect via
-// the login page's ?redirect= query param.
 export function sanitizeRedirectPath(path: string | null | undefined): string {
   if (!path || !path.startsWith('/') || path.startsWith('//')) {
     return DEFAULT_REDIRECT;
@@ -17,7 +13,6 @@ export function sanitizeRedirectPath(path: string | null | undefined): string {
 }
 
 export function useLogin(redirectTo: string = DEFAULT_REDIRECT) {
-  const router = useRouter();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -91,8 +86,7 @@ export function useLogin(redirectTo: string = DEFAULT_REDIRECT) {
 
       if (authData?.success) {
         tokenManager.save();
-        window.dispatchEvent(new Event('auth-change'));
-        router.push(redirectTo);
+        window.location.href = redirectTo;
       } else {
         throw new Error(authData?.error || 'Erreur de connexion');
       }

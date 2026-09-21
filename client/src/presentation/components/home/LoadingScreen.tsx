@@ -2,12 +2,7 @@
 
 import Image from 'next/image';
 
-/**
- * Composant de chargement avec animation de chien qui marche
- */
 export function LoadingScreen() {
-  // Use local public asset (relative path) so Next.js serves/optimizes it and
-  // avoid cross-host fetches that delay LCP in Docker/nginx setups.
   const walkingDogGif = '/images/walking-dog.gif';
 
   return (
@@ -18,7 +13,7 @@ export function LoadingScreen() {
         width={256}
         height={256}
         className="animate-bounce"
-        priority // Ajout de la priorité pour LCP
+        priority
         style={{ width: '256px', height: '256px', objectFit: 'contain' }}
       />
     </div>

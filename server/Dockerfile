@@ -1,8 +1,6 @@
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-# GD is compiled in the final PHP image below; the Composer-only builder does
-# not ship PHP extensions, so ignore this single platform check in this stage.
 RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --no-scripts --ignore-platform-req=ext-gd
 
 FROM php:8.3-fpm

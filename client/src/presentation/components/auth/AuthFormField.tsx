@@ -3,10 +3,6 @@ interface AuthFormFieldProps {
   children: React.ReactNode;
 }
 
-/**
- * Conteneur de champ de formulaire d'authentification
- * Règle: composant simple < 20 lignes
- */
 export function AuthFormField({ label, children }: AuthFormFieldProps) {
   return (
     <div className="mb-4">

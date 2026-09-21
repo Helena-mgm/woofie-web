@@ -300,8 +300,6 @@ class AuthController extends AbstractController
                 ?? $sitterRepository->findByTelephone($normalizedIdentifier)?->getUser());
 
         if (!$user) {
-            // Still run a password hash verification of comparable cost so the response
-            // time doesn't reveal whether the identifier is registered (timing side-channel).
             $this->burnPasswordHashingTime($hasher, $password);
 
             return new JsonResponse([
@@ -707,11 +705,6 @@ class AuthController extends AbstractController
 
     private static ?string $dummyPasswordHash = null;
 
-    /**
-     * Runs a password verification of the same cost as a real login attempt, against a
-     * fixed dummy hash, so that an unknown identifier takes as long to reject as a known
-     * identifier with a wrong password.
-     */
     private function burnPasswordHashingTime(UserPasswordHasherInterface $hasher, string $password): void
     {
         $dummy = new User();

@@ -52,7 +52,6 @@ export function EventCard({ event, index, currentUserId, onJoin, onLeave, onEdit
     setDeleting(true);
     const ok = await onDelete(event.id);
     if (!ok) { setDeleting(false); setConfirmDelete(false); }
-    // If ok, the card disappears from the list
   };
 
   return (

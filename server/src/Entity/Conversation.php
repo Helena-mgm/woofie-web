@@ -16,7 +16,7 @@ class Conversation
     private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 20)]
-    private string $type; // 'direct', 'group', or 'bot'
+    private string $type;
 
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $name = null;

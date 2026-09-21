@@ -1,15 +1,7 @@
-/**
- * Utilitaires pour parser et afficher :
- *  - Mentions @[Nom](userId)
- *  - Tags chien #dog:[Nom](dogId)
- *  - URLs brutes https://... → liens cliquables
- */
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-/** Transforme le texte brut en nœuds React cliquables */
 export function renderMentionedContent(content: string): ReactNode[] {
-  // Ordre : mentions > dog tags > URLs brutes > texte
   const combined =
     /(@\[([^\]]+)\]\((\d+)\)|#dog:\[([^\]]+)\]\((\d+)\)|https?:\/\/[^\s<>"]+)/g;
 
@@ -26,7 +18,6 @@ export function renderMentionedContent(content: string): ReactNode[] {
     const token = match[0];
 
     if (token.startsWith("@")) {
-      // @[Nom](id)
       const name = match[2];
       const id = match[3];
       parts.push(
@@ -39,7 +30,6 @@ export function renderMentionedContent(content: string): ReactNode[] {
         </Link>
       );
     } else if (token.startsWith("#dog:")) {
-      // #dog:[Nom](id)
       const name = match[4];
       const id = match[5];
       parts.push(
@@ -52,7 +42,6 @@ export function renderMentionedContent(content: string): ReactNode[] {
         </Link>
       );
     } else {
-      // URL brute
       parts.push(
         <a
           key={key++}
@@ -76,7 +65,6 @@ export function renderMentionedContent(content: string): ReactNode[] {
   return parts.length > 0 ? parts : [<span key={0}>{content}</span>];
 }
 
-/** Texte brut sans balises */
 export function stripMentions(content: string): string {
   return content
     .replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1")

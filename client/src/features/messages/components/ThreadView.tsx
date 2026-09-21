@@ -34,7 +34,6 @@ function ParticipantsDrawer({
     setLeaving(true);
     await apiPost(`/api/conversations/${conversation.id}/leave`, {});
     onClose();
-    // parent will reload on next message/nav
   };
 
   return (
@@ -52,7 +51,6 @@ function ParticipantsDrawer({
           <div key={p.id} className="flex items-center gap-3 px-4 py-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F5EDE1] text-sm">
               {p.avatar ? (
-                // Avatar participant via API chat — URL dynamique, next/image non applicable ici
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.avatar} alt={p.name} className="h-8 w-8 rounded-full object-cover" />
               ) : (
@@ -217,7 +215,6 @@ export function ThreadView({
           </div>
         ) : (
           messages.map((message) => {
-            // System messages (join/leave/created)
             if (message.type === "system") {
               return (
                 <div key={message.id} className="flex justify-center my-1">
@@ -232,7 +229,6 @@ export function ThreadView({
             const canEdit = isBot && isOwn && message.type === "text" && conversation.id !== -1;
             const isEditing = editingMessageId === message.id;
 
-            // Find sender name for group chats
             const senderParticipant = isGroup
               ? conversation.participants.find((p) => p.id === message.senderId)
               : null;

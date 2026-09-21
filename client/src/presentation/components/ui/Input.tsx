@@ -6,11 +6,6 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   helperText?: string;
 }
 
-/**
- * Composant Input réutilisable avec label et gestion d'erreur
- * Utilise forwardRef pour permettre l'accès au ref
- * Utilise React.memo pour optimiser les performances
- */
 export const Input = memo(
   forwardRef<HTMLInputElement, InputProps>(
     ({ label, error, helperText, className = '', ...props }, ref) => {

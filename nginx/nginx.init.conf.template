@@ -1,13 +1,3 @@
-# ============================================================
-# nginx.init.conf — Configuration HTTP-only temporaire
-# Utilisée UNIQUEMENT lors du premier déploiement pour
-# permettre à Certbot d'obtenir le certificat Let's Encrypt
-# via le challenge ACME HTTP-01.
-#
-# Ce fichier est monté par deploy.sh dans un container
-# nginx temporaire AVANT le démarrage de la stack complète.
-# ============================================================
-
 events {}
 
 http {
@@ -15,12 +5,10 @@ http {
         listen 80;
         server_name ${APP_DOMAIN} www.${APP_DOMAIN};
 
-        # Challenge ACME — Let's Encrypt écrit ici, nginx sert le fichier
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
         }
 
-        # Toutes les autres requêtes : réponse minimaliste
         location / {
             return 200 "Woofie — initialisation SSL en cours, revenez dans 1 minute...";
             add_header Content-Type text/plain;

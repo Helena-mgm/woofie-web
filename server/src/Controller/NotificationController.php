@@ -29,7 +29,6 @@ class NotificationController extends AbstractController
     }
 
 
-    /** GET /api/notifications — liste des notifs de l'utilisateur connecté */
     #[Route('', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -45,7 +44,6 @@ class NotificationController extends AbstractController
         ]);
     }
 
-    /** POST /api/notifications/read-all — marquer toutes les notifs comme lues */
     #[Route('/read-all', methods: ['POST'])]
     public function readAll(Request $request): JsonResponse
     {
@@ -57,7 +55,6 @@ class NotificationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    /** POST /api/notifications/{id}/read — marquer une notif comme lue */
     #[Route('/{id}/read', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function read(int $id, Request $request): JsonResponse
     {
@@ -75,7 +72,6 @@ class NotificationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    /** DELETE /api/notifications/{id} — supprimer une notif */
     #[Route('/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
     public function delete(int $id, Request $request): JsonResponse
     {
@@ -93,7 +89,6 @@ class NotificationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    /** DELETE /api/notifications — supprimer toutes les notifs de l'utilisateur */
     #[Route('', methods: ['DELETE'])]
     public function deleteAll(Request $request): JsonResponse
     {

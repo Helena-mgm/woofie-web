@@ -14,17 +14,11 @@ class SiretValidator
     ) {
     }
 
-    /**
-     * Valide le format SIRET (14 chiffres)
-     */
     public function isValidFormat(string $siret): bool
     {
         return preg_match('/^\d{14}$/', $this->normalize($siret)) === 1;
     }
 
-    /**
-     * Algorithme de Luhn pour valider la clé de contrôle du SIRET
-     */
     public function validateLuhn(string $siret): bool
     {
         $siret = $this->normalize($siret);
@@ -51,9 +45,6 @@ class SiretValidator
         return $sum % 10 === 0;
     }
 
-    /**
-     * Vérifie si le SIRET existe dans la base Sirene via l'API INSEE
-     */
     public function checkSiretExistence(string $siret): array
     {
         $siret = $this->normalize($siret);
@@ -124,14 +115,10 @@ class SiretValidator
         }
     }
 
-    /**
-     * Validation complète du SIRET
-     */
     public function validate(string $siret, bool $checkApi = true): array
     {
         $siret = $this->normalize($siret);
 
-        // 1. Vérifier le format
         if (!$this->isValidFormat($siret)) {
             return [
                 'isValid' => false,
@@ -139,7 +126,6 @@ class SiretValidator
             ];
         }
 
-        // 2. Vérifier l'algorithme de Luhn
         if (!$this->validateLuhn($siret)) {
             return [
                 'isValid' => false,
@@ -147,7 +133,6 @@ class SiretValidator
             ];
         }
 
-        // 3. Vérifier via API si demandé
         if ($checkApi) {
             $existenceCheck = $this->checkSiretExistence($siret);
 
@@ -161,16 +146,12 @@ class SiretValidator
             ];
         }
 
-        // Validation basique uniquement
         return [
             'isValid' => true,
             'message' => 'SIRET valide (format et clé de contrôle corrects)'
         ];
     }
 
-    /**
-     * Formate un SIRET pour l'affichage : XXX XXX XXX XXXXX
-     */
     public function format(string $siret): string
     {
         $cleaned = $this->normalize($siret);

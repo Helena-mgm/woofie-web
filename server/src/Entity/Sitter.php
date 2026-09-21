@@ -84,8 +84,6 @@ class Sitter
         $this->createdAt = new \DateTimeImmutable();
     }
 
-    // Getters and Setters
-
     public function getId(): ?int
     {
         return $this->id;

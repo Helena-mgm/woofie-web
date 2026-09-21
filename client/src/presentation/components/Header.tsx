@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { getImageUrl } from '@/infrastructure/config/constants';
 import NotificationBell from '@/presentation/components/notifications/NotificationBell';
-// framer-motion retiré du layout → CSS transitions pures (Fast Refresh < 100ms)
 
 interface NavItem {
   name: string;

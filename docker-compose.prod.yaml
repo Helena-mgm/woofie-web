@@ -1,16 +1,5 @@
-# ============================================================
-# 🐾 Woofie — Docker Compose PRODUCTION
-# Les valeurs propres à l'environnement viennent de .env.prod.
-# ============================================================
-# Usage :
-#   cp .env.prod.example .env.prod   # (une seule fois, sur le VPS)
-#   ./deploy.sh                      # premier déploiement (génère SSL)
-#   make prod-update                 # mises à jour suivantes
-# ============================================================
-
 services:
 
-  # ── Base de données PostgreSQL ─────────────────────────────
   db:
     image: postgres:15
     container_name: woofie-db
@@ -29,7 +18,6 @@ services:
     networks:
       - woofie
 
-  # ── Backend Symfony (PHP-FPM) ──────────────────────────────
   symfony:
     build:
       context: ./server
@@ -53,7 +41,6 @@ services:
       UPLOAD_MAX_PIXELS: ${UPLOAD_MAX_PIXELS:-20000000}
       INSEE_API_KEY: ${INSEE_API_KEY:-}
     volumes:
-      # Volume partagé avec nginx pour servir les fichiers uploadés
       - uploads:/var/www/html/public/uploads
     expose:
       - "9000"
@@ -64,18 +51,15 @@ services:
     networks:
       - woofie
 
-  # ── Frontend Next.js (standalone production) ───────────────
   nextjs:
     build:
       context: ./client
       args:
-        # URL vide → les requêtes API sont relatives (/api/...) → nginx les route
         NEXT_PUBLIC_API_URL: ""
         NEXT_PUBLIC_WS_ENABLED: "false"
     container_name: woofie-frontend
     environment:
       NODE_ENV: production
-      # Appels serveur-side (SSR/API routes) → passent par nginx interne
       INTERNAL_API_BASE: ${INTERNAL_API_BASE:?❌ Variable INTERNAL_API_BASE obligatoire dans .env.prod}
     expose:
       - "3000"
@@ -85,7 +69,6 @@ services:
     networks:
       - woofie
 
-  # ── Ollama (LLM pour WoofieBot) ────────────────────────────
   ollama:
     image: ollama/ollama:latest
     container_name: woofie-ollama
@@ -99,7 +82,6 @@ services:
     networks:
       - woofie
 
-  # ── Nginx (reverse proxy + SSL) ────────────────────────────
   nginx:
     image: nginx:stable-alpine
     container_name: woofie-nginx
@@ -108,11 +90,8 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.prod.conf.template:/etc/nginx/templates/nginx.conf.template:ro
-      # Uploads partagés avec symfony
       - uploads:/var/www/html/public/uploads:ro
-      # Let's Encrypt — challenge ACME (renouvellement auto)
       - ./certbot/www:/var/www/certbot:ro
-      # Let's Encrypt — certificats SSL
       - ./certbot/conf:/etc/letsencrypt:ro
     environment:
       APP_DOMAIN: ${APP_DOMAIN:?Variable APP_DOMAIN obligatoire dans .env.prod}
@@ -126,14 +105,12 @@ services:
     networks:
       - woofie
 
-  # ── Certbot (renouvellement SSL automatique) ───────────────
   certbot:
     image: certbot/certbot:latest
     container_name: woofie-certbot
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    # Renouvelle le cert toutes les 12h si nécessaire
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
     networks:
       - woofie

@@ -14,8 +14,6 @@ class ForbiddenKeywordRepository extends ServiceEntityRepository
     }
 
     /**
-     * Return all keywords as array of strings
-     *
      * @return string[]
      */
     public function getAllKeywords(): array

@@ -1,8 +1,3 @@
-/**
- * Utilitaires de validation
- * Règle: une fonction = un test simple, < 10 lignes
- */
-
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

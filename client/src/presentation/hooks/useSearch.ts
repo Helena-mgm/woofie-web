@@ -1,4 +1,3 @@
-// Hook pour la recherche de conversations et groupes
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -13,15 +12,12 @@ export function useSearch(conversations: Conversation[]) {
     const query = searchQuery.toLowerCase();
     
     return conversations.filter(conv => {
-      // Search by name
       if (conv.name?.toLowerCase().includes(query)) return true;
 
-      // Search by participant names
       if (conv.participants.some(p => p.name.toLowerCase().includes(query))) {
         return true;
       }
 
-      // Search in last message
       if (conv.lastMessage?.content.toLowerCase().includes(query)) {
         return true;
       }

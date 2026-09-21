@@ -32,7 +32,6 @@ export default function NotificationBell() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const router  = useRouter();
 
-  // Close desktop dropdown on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -44,7 +43,6 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Lock body scroll when mobile sheet is open
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };

@@ -7,20 +7,13 @@ export interface MultiIcadInputProps {
   label?: string;
   error?: string;
   helperText?: string;
-  value: string[]; // Liste des numéros ICAD
+  value: string[];
   onChange: (icads: string[]) => void;
   required?: boolean;
   disabled?: boolean;
   maxItems?: number;
 }
 
-/**
- * Composant pour gérer plusieurs numéros ICAD
- * - Ajout/suppression de numéros
- * - Validation en temps réel
- * - Affichage du type (puce/tatouage)
- * - Limite configurable
- */
 export const MultiIcadInput = memo<MultiIcadInputProps>(function MultiIcadInput({
   label = 'Numéros ICAD de vos chiens',
   error,
@@ -40,27 +33,23 @@ export const MultiIcadInput = memo<MultiIcadInputProps>(function MultiIcadInput(
       return;
     }
 
-    // Vérifier la limite
     if (value.length >= maxItems) {
       setInputError(`Maximum ${maxItems} numéros autorisés`);
       return;
     }
 
-    // Valider le numéro
     const validation = validateIcadNumber(inputValue);
-    
+
     if (!validation.isValid) {
       setInputError(validation.message || 'Numéro ICAD invalide');
       return;
     }
 
-    // Vérifier les doublons
     if (value.includes(validation.normalized)) {
       setInputError('Ce numéro ICAD existe déjà dans la liste');
       return;
     }
 
-    // Ajouter le numéro normalisé
     onChange([...value, validation.normalized]);
     setInputValue('');
     setInputError(null);

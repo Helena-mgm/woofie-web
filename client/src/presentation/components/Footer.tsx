@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-// framer-motion retiré du layout → CSS transitions pures
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -40,7 +39,7 @@ export function Footer() {
                     width={48}
                     height={48}
                     className="object-contain"
-                    priority // Ajout de la priorité pour améliorer les performances
+                    priority
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 </div>

@@ -6,10 +6,6 @@ interface HeroSectionProps {
   isAuthenticated: boolean;
 }
 
-/**
- * Section Hero de la page d'accueil
- * Règle: < 150 lignes, une seule responsabilité
- */
 export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16 relative z-10">

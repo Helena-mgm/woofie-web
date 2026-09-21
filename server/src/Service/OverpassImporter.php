@@ -147,7 +147,6 @@ class OverpassImporter
                     }
                 }
             } catch (TransportExceptionInterface | ClientExceptionInterface | RedirectionExceptionInterface | ServerExceptionInterface) {
-                // try next endpoint
             }
         }
 

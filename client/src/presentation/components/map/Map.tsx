@@ -25,7 +25,6 @@ const debugError = (...args: unknown[]): void => {
   }
 };
 
-/** Échappe les caractères HTML pour éviter les injections XSS dans les popups MapLibre */
 const escapeHtml = (str: string): string =>
   str
     .replace(/&/g, '&amp;')
@@ -192,7 +191,7 @@ export function Map({
   events = [],
   showPOI = false,
   className = '',
-  initialCenter = [2.3522, 48.8566], // Paris [lng, lat]
+  initialCenter = [2.3522, 48.8566],
   initialZoom = 12,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -258,7 +257,6 @@ export function Map({
     return () => window.removeEventListener('resize', resize);
   }, [mapLoaded]);
 
-  // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -267,25 +265,25 @@ export function Map({
       style: {
         version: 8,
         sources: {
-          'carto-light': {
+          'osm': {
             type: 'raster',
             tiles: [
-              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+              'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
             ],
-            tileSize: 512,
-            attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            tileSize: 256,
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxzoom: 19,
           },
         },
         layers: [
           {
-            id: 'carto-light-layer',
+            id: 'osm-layer',
             type: 'raster',
-            source: 'carto-light',
+            source: 'osm',
             minzoom: 0,
-            maxzoom: 22,
+            maxzoom: 19,
           },
         ],
       },
@@ -305,19 +303,16 @@ export function Map({
         map.current = null;
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter/Zoom are mount-only
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Add event markers
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
 
-    // Remove existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Add new markers for each event
     events.forEach((event) => {
-        if (!event.lat || !event.lng) return; // Skip invalid events
+        if (!event.lat || !event.lng) return;
 
         const popup = new maplibregl.Popup({
           offset: 25,
@@ -341,7 +336,6 @@ export function Map({
           </div>
         `);
 
-        // Create custom marker element with paw icon
         const el = document.createElement('div');
         el.className = 'custom-marker';
         el.style.cssText = `
@@ -379,13 +373,12 @@ export function Map({
 
         const marker = new maplibregl.Marker({
           element: el,
-          anchor: 'center', // Center anchor for round markers
+          anchor: 'center',
         })
           .setLngLat([event.lng, event.lat])
           .setPopup(popup)
           .addTo(map.current!);
 
-        // Open popup on click - Multiple event listeners for reliability
         el.addEventListener('click', (e) => {
           debugLog('🎯 Event marker clicked!', event.name);
           e.stopPropagation();
@@ -403,10 +396,8 @@ export function Map({
     });
   }, [events, mapLoaded]);
 
-  const MIN_MOVE_DISTANCE = 0.005; // Minimum movement in degrees (~500m)
+  const MIN_MOVE_DISTANCE = 0.005;
 
-  // Utility to calculate distance between two bounds
-  // Fetch and display POIs with BEST OPTIMIZATION
   useEffect(() => {
     if (!map.current || !showPOI || !mapLoaded) {
       if (warmupTimeoutRef.current) {
@@ -417,7 +408,6 @@ export function Map({
       if (!showPOI) {
         setIsLegendOpen(false);
       }
-      // Remove POI markers if showPOI is false
       poiMarkersRef.current.forEach((marker) => marker.remove());
       poiMarkersRef.current.clear();
       return;
@@ -430,7 +420,6 @@ export function Map({
       const now = Date.now();
       const MIN_INTERVAL = 500;
 
-      // Rate limiting check
       if (!force && now - lastPOIFetchRef.current < MIN_INTERVAL) {
         debugLog('⏱️ POI: Waiting for rate limit...');
         return;
@@ -443,14 +432,12 @@ export function Map({
       if (!bounds) return;
       const currentBounds = captureBounds(bounds);
 
-      // Check if movement is significant enough
       const lastBounds = lastBoundsRef.current;
       if (!force && lastBounds && boundsDistance(currentBounds, lastBounds) < MIN_MOVE_DISTANCE) {
         debugLog('📍 POI: Minimal movement, no fetch');
         return;
       }
 
-      // Round bounds to reduce cache fragmentation (0.01 degree ≈ 1km)
       const south = Math.floor(currentBounds.south * 100) / 100;
       const west = Math.floor(currentBounds.west * 100) / 100;
       const north = Math.ceil(currentBounds.north * 100) / 100;
@@ -459,7 +446,6 @@ export function Map({
       const cacheKey = `${south},${west},${north},${east}`;
       setPoiError(null);
 
-      // Check cache first
       if (poiCacheRef.current[cacheKey]) {
         debugLog('💾 POI: Data from cache');
         delete warmupAttemptsRef.current[cacheKey];
@@ -468,7 +454,6 @@ export function Map({
         return;
       }
 
-      // Update last fetch time
       lastPOIFetchRef.current = now;
       lastBoundsRef.current = currentBounds;
 
@@ -604,14 +589,11 @@ export function Map({
         const key = `${coords.lat.toFixed(5)}|${coords.lon.toFixed(5)}`;
         incomingKeys.add(key);
 
-        // Skip if this marker already exists
         if (poiMarkersRef.current.has(key)) return;
 
-        // Wrapper: MapLibre positions this element via transform — never touch it
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'width:28px;height:28px;cursor:pointer;pointer-events:auto;';
 
-        // Inner visual: we scale this on hover, not the wrapper
         const el = document.createElement('div');
         el.className = 'custom-poi-marker';
         el.style.cssText = [
@@ -634,7 +616,6 @@ export function Map({
         wrapper.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.25)'; el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.45)'; });
         wrapper.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)'; });
 
-        // Lazily build popup only on first click
         const address = formatAddress(element.tags);
         const mapsUrl = buildGoogleMapsUrl(element, coords, address);
         const popup = new maplibregl.Popup({ offset: 25 });
@@ -665,7 +646,6 @@ export function Map({
         poiMarkersRef.current.set(key, marker);
       });
 
-      // Remove markers that are no longer in the new set
       poiMarkersRef.current.forEach((marker, key) => {
         if (!incomingKeys.has(key)) {
           marker.remove();
@@ -674,21 +654,17 @@ export function Map({
       });
     };
 
-    // Debounced fetch on map movement
     const debouncedFetchPOIs = () => {
       clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         fetchPOIs();
-      }, 200); // UI feels instant but avoids spamming the backend during scroll
+      }, 200);
     };
 
-    // Initial fetch
     fetchPOIs();
 
-    // Re-fetch when map stops moving (debounced)
     map.current.on('moveend', debouncedFetchPOIs);
 
-    // Cleanup
     return () => {
       isMounted = false;
       clearTimeout(debounceTimeout);

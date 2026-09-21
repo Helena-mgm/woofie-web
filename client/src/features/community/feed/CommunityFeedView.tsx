@@ -40,7 +40,6 @@ export function CommunityFeedView() {
     likeComment,
   } = useFeed();
 
-  // FeedHero affiché une seule fois par utilisateur (premier passage)
   const [showHero, setShowHero] = useState(false);
   useEffect(() => {
     if (!user) return;
@@ -55,7 +54,6 @@ export function CommunityFeedView() {
     void refresh();
   }, [refresh]);
 
-  // Utilisateurs connus pour les @mentions dans le compositeur
   const knownUsers = useMemo<User[]>(() => {
     const map = new Map<number, User>();
     posts.forEach((post) => {

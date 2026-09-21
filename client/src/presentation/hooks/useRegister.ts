@@ -5,10 +5,6 @@ import { apiPostMultipart } from '@/shared/lib/api';
 import { validateOwnerForm, validateSitterForm } from '@/shared/lib/form-validation';
 import type { OwnerRegisterFormData, SitterRegisterFormData, DogInfo } from '@/types';
 
-/**
- * Hook pour gérer l'inscription (Owner ou Sitter)
- * Règle: hook < 100 lignes, logique métier séparée
- */
 export function useRegister() {
   const router = useRouter();
   const [accountType, setAccountType] = useState<'owner' | 'sitter'>('owner');
@@ -65,8 +61,7 @@ export function useRegister() {
       formData.append('telephone', ownerData.telephone);
       formData.append('password', ownerData.password);
       formData.append('ville', ownerData.ville);
-      
-      // Envoyer les informations des chiens (sans photos)
+
       formData.append('dogs', JSON.stringify(ownerData.dogs.map((dog: DogInfo) => ({
         icadNumber: dog.icadNumber,
         nom: dog.nom,
@@ -74,11 +69,9 @@ export function useRegister() {
         race: dog.race,
         dateNaissance: dog.dateNaissance,
       }))));
-      
-      // Ajouter la photo du propriétaire
+
       if (ownerData.photo) formData.append('photo', ownerData.photo);
-      
-      // Ajouter toutes les photos des chiens
+
       ownerData.dogs.forEach((dog: DogInfo, dogIndex: number) => {
         dog.photos.forEach((photo: File, photoIndex: number) => {
           formData.append(`dogPhoto_${dogIndex}_${photoIndex}`, photo);

@@ -9,10 +9,6 @@ interface PasswordInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEle
   toggleAriaLabel: string;
 }
 
-/**
- * Composant PasswordInput optimisé avec toggle de visibilité
- * Combine Input + bouton de toggle
- */
 export const PasswordInput = memo<PasswordInputProps>(({
   label = 'Mot de passe',
   error,

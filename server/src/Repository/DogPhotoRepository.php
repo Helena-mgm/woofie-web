@@ -16,9 +16,6 @@ class DogPhotoRepository extends ServiceEntityRepository
         parent::__construct($registry, DogPhoto::class);
     }
 
-    /**
-     * Find all photos for a dog, ordered by display order
-     */
     public function findByDogOrdered(int $dogId): array
     {
         return $this->createQueryBuilder('dp')

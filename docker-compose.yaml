@@ -12,6 +12,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - woofie
 
   adminer:
     image: adminer:latest
@@ -23,6 +25,8 @@ services:
       ADMINER_DESIGN: pepa-linha
     depends_on:
       - db
+    networks:
+      - woofie
     restart: unless-stopped
 
   pgadmin:
@@ -38,6 +42,8 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - db
+    networks:
+      - woofie
     restart: unless-stopped
 
   symfony:
@@ -67,6 +73,8 @@ services:
       - "9000"
     depends_on:
       - db
+    networks:
+      - woofie
     command: >
       bash -c "mkdir -p var public/uploads/owners public/uploads/dogs public/uploads/posts public/uploads/sitters &&
                chown -R www-data:www-data var public/uploads || true &&
@@ -85,14 +93,12 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Copiez .env.example vers .env}
       NEXT_PUBLIC_WS_ENABLED: ${NEXT_PUBLIC_WS_ENABLED:?Copiez .env.example vers .env}
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-      - /app/.next
     expose:
       - "3000"
     depends_on:
       - symfony
+    networks:
+      - woofie
 
   ollama:
     image: ollama/ollama:latest
@@ -105,6 +111,8 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:?Copiez .env.example vers .env}
     restart: unless-stopped
     command: serve
+    networks:
+      - woofie
 
   nginx:
     image: nginx:stable-alpine
@@ -121,8 +129,13 @@ services:
     depends_on:
       - nextjs
       - symfony
+    networks:
+      - woofie
 
 volumes:
   db_data:
   pgadmin_data:
   ollama_data:
+networks:
+  woofie:
+    driver: bridge

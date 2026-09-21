@@ -6,26 +6,16 @@ export interface PhoneInputProps extends Omit<InputHTMLAttributes<HTMLInputEleme
   helperText?: string;
 }
 
-/**
- * Composant Input pour numéro de téléphone
- * - Format français : 0X XX XX XX XX
- * - Validation automatique
- * - Formatage en temps réel
- */
 export const PhoneInput = memo(
   forwardRef<HTMLInputElement, PhoneInputProps>(function PhoneInput(
     { label, error, helperText, className = '', required, value, onChange, ...props },
     ref
   ) {
-    // Formatte le numéro au format 0X XX XX XX XX
     const formatPhoneNumber = (val: string): string => {
-      // Garde uniquement les chiffres
       const cleaned = val.replace(/\D/g, '');
-      
-      // Limite à 10 chiffres
+
       const limited = cleaned.substring(0, 10);
-      
-      // Formate par groupe de 2
+
       const match = limited.match(/^(\d{0,2})(\d{0,2})(\d{0,2})(\d{0,2})(\d{0,2})$/);
       
       if (!match) return limited;
@@ -38,8 +28,7 @@ export const PhoneInput = memo(
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const formatted = formatPhoneNumber(e.target.value);
-      
-      // Créer un nouvel événement avec la valeur formatée
+
       const syntheticEvent = {
         ...e,
         target: {

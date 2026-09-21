@@ -35,7 +35,6 @@ export function MessagesView() {
     deleteConversation,
   } = useMessages(user?.id);
 
-  // Ouvrir automatiquement la conversation demandée (ex: depuis /services)
   useEffect(() => {
     if (loading) return;
     const stored = sessionStorage.getItem('openConversation');
@@ -63,9 +62,7 @@ export function MessagesView() {
     <div className="flex flex-1 min-h-0 overflow-hidden bg-[#FAF6F1]">
       <div
         className={cn(
-          // Desktop (lg+): always shown, fixed width, no grow
           "lg:flex lg:w-72 lg:shrink-0 lg:grow-0 lg:flex-col",
-          // Mobile/tablet: full-width when list, hidden when thread
           mobileView === "list" ? "flex w-full flex-col" : "hidden"
         )}
       >
@@ -80,9 +77,7 @@ export function MessagesView() {
 
       <div
         className={cn(
-          // Desktop (lg+): always shown, takes remaining space
           "lg:flex lg:flex-1 lg:min-w-0 lg:flex-col lg:min-h-0",
-          // Mobile/tablet: shown when thread, hidden when list
           mobileView === "thread" ? "flex flex-1 min-w-0 flex-col min-h-0" : "hidden"
         )}
       >

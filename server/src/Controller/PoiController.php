@@ -110,8 +110,6 @@ class PoiController extends AbstractController
     }
 
     /**
-     * Attempts to populate the POI cache from Overpass and returns newly persisted items.
-     *
      * @return array<int, \App\Entity\PointOfInterest>
      */
     private function warmupCache(float $south, float $west, float $north, float $east): array

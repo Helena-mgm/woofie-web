@@ -30,7 +30,6 @@ class PostComment
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
-    // Self-referencing for nested replies
     #[ORM\ManyToOne(targetEntity: PostComment::class, inversedBy: 'replies')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?PostComment $parent = null;

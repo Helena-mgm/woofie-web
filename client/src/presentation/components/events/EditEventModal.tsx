@@ -72,7 +72,6 @@ export function EditEventModal({ event, onClose, onSave }: Props) {
     lng:              event.lng ?? null,
   });
 
-  // Géolocalisation
   const [geoQuery, setGeoQuery]       = useState(
     event.lat && event.lng ? event.location : ""
   );

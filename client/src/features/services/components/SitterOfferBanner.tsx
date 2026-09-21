@@ -13,7 +13,6 @@ export function SitterOfferBanner() {
   const { user, loading } = useAuth();
   const [open, setOpen] = useState(false);
 
-  // Afficher seulement pour les sitters connectés
   if (loading || !user || user.type !== "sitter") return null;
 
   const hasBio = !!user.bio?.trim();

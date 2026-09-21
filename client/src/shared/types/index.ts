@@ -64,7 +64,6 @@ export interface RegisterFormData extends Record<string, unknown> {
   type: 'owner' | 'sitter';
 }
 
-// Types pour les animations
 export interface DogAnimationState {
   isPasswordFocused: boolean;
   isEmailFocused: boolean;
@@ -73,7 +72,6 @@ export interface DogAnimationState {
   success: string;
 }
 
-// Types pour les chiens
 export interface Dog {
   id: number;
   nom: string;
@@ -86,7 +84,6 @@ export interface Dog {
   owner_id?: number;
 }
 
-// Types pour les locations (à venir)
 export interface Location {
   id: number;
   latitude: number;

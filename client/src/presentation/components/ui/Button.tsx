@@ -21,10 +21,6 @@ const sizeStyles = {
   lg: 'px-8 py-4 text-lg',
 };
 
-/**
- * Composant Button réutilisable et optimisé
- * Utilise React.memo pour éviter les re-renders inutiles
- */
 export const Button = memo<ButtonProps>(({
   children,
   variant = 'primary',

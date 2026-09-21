@@ -8,11 +8,6 @@ interface AnimatedDogProps extends DogAnimationState {
   height?: number;
 }
 
-/**
- * Composant SVG du chien animé réutilisable
- * Utilisé sur les pages de login et register
- * Optimisé avec React.memo pour éviter les re-renders inutiles
- */
 export const AnimatedDog = memo<AnimatedDogProps>(function AnimatedDog({
   isPasswordFocused,
   isEmailFocused,

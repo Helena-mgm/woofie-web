@@ -1,6 +1,3 @@
-/**
- * Types et interfaces pour les événements
- */
 export interface Event {
   id: number;
   title: string;

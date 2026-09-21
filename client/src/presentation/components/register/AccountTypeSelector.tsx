@@ -5,10 +5,6 @@ interface AccountTypeSelectorProps {
   onTypeChange: (type: 'owner' | 'sitter') => void;
 }
 
-/**
- * Sélecteur de type de compte
- * Règle: composant simple < 50 lignes
- */
 export function AccountTypeSelector({ accountType, onTypeChange }: AccountTypeSelectorProps) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:gap-4">

@@ -10,10 +10,6 @@ interface AuthLayoutProps {
   footerLinkHref: string;
 }
 
-/**
- * Layout partagé pour login/register
- * Règle: composant layout < 50 lignes
- */
 export function AuthLayout({
   title,
   subtitle,

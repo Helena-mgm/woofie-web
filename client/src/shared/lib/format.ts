@@ -1,8 +1,3 @@
-/**
- * Utilitaires de formatage
- * Règle: une fonction = une responsabilité, < 15 lignes
- */
-
 export function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString('fr-FR', {

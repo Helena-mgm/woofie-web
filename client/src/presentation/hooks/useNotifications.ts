@@ -35,7 +35,7 @@ interface UseNotificationsReturn extends NotificationsState {
   refresh: () => Promise<void>;
 }
 
-const POLL_INTERVAL = 30_000; // 30 s
+const POLL_INTERVAL = 30_000;
 
 export function useNotifications(): UseNotificationsReturn {
   const [state, setState] = useState<NotificationsState>({
@@ -61,11 +61,9 @@ export function useNotifications(): UseNotificationsReturn {
         loading: false,
       }));
     } catch {
-      // Silent fail — user may not be logged in
     }
   }, []);
 
-  // Initial fetch + polling
   useEffect(() => {
     refresh();
     timerRef.current = setInterval(refresh, POLL_INTERVAL);

@@ -1,12 +1,9 @@
-# Makefile - Woofie Project 🐾
-
 DC = docker compose
 EXEC_PHP = $(DC) exec symfony
 EXEC_NODE = $(DC) exec nextjs
 
 .PHONY: up down build logs ps bash composer migrate dbshell ollama-pull ollama-list
 
-## 🐳 Containers
 up: check-env
 	docker compose down --remove-orphans
 	docker compose build --no-cache
@@ -35,7 +32,6 @@ logs:
 ps:
 	$(DC) ps
 
-## 🧱 Backend (Symfony)
 bash:
 	$(EXEC_PHP) bash
 
@@ -48,7 +44,6 @@ migrate:
 dbshell:
 	$(DC) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
-## 🤖 Ollama (AI Chatbot)
 ollama-pull:
 	@docker compose exec ollama sh -c 'ollama pull "$$OLLAMA_MODEL"'
 	@echo "✅ Modèle téléchargé et prêt !"
@@ -60,7 +55,6 @@ ollama-list:
 ollama-bash:
 	@docker compose exec ollama sh
 
-## 🗄️ Database Admin
 adminer:
 	@echo "🌐 Adminer disponible sur: http://localhost:8080"
 	@echo "   Serveur: db"
@@ -76,11 +70,9 @@ pgadmin:
 	@echo "   - Port: 5432"
 	@echo "   - Identifiants PostgreSQL: voir .env"
 
-## ⚡️ Frontend (Next.js)
 node-bash:
 	$(EXEC_NODE) sh
 
-## 🧹 Utilitaires
 restart:
 	@echo "🔄 Restarting containers..."
 	-@docker compose down -v --remove-orphans
@@ -108,9 +100,6 @@ reset:
 	docker compose up -d --wait
 	make up
 
-## ─────────────────────────────────────────────────────────
-## 🚀 Production — https://woofie.ovh
-## ─────────────────────────────────────────────────────────
 DC_PROD = docker compose -f docker-compose.prod.yaml --env-file .env.prod
 
 prod-deploy:

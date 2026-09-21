@@ -16,9 +16,6 @@ class PostRepository extends ServiceEntityRepository
         parent::__construct($registry, Post::class);
     }
 
-    /**
-     * Find recent posts ordered by creation date
-     */
     public function findRecent(int $limit = 20, int $offset = 0): array
     {
         return $this->createQueryBuilder('p')
@@ -29,9 +26,6 @@ class PostRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Find posts by user
-     */
     public function findByUser(int $userId): array
     {
         return $this->createQueryBuilder('p')

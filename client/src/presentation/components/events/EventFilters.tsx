@@ -5,10 +5,6 @@ interface EventFiltersProps {
   onCategoryChange: (category: EventCategory) => void;
 }
 
-/**
- * Filtres pour les événements
- * Règle: composant simple < 50 lignes
- */
 export function EventFilters({ selectedCategory, onCategoryChange }: EventFiltersProps) {
   const categories: { value: EventCategory; label: string; icon: string }[] = [
     { value: 'all', label: 'Tous', icon: '🎯' },

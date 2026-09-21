@@ -22,7 +22,6 @@ class EventAttendee
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
-    /** pending | accepted | rejected */
     #[ORM\Column(type: 'string', length: 20)]
     private string $status = 'pending';
 

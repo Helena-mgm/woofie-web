@@ -11,7 +11,7 @@ export interface DogInfoInputProps {
   label?: string;
   error?: string;
   helperText?: string;
-  value: DogInfo[]; // Liste des chiens
+  value: DogInfo[];
   onChange: (dogs: DogInfo[]) => void;
   required?: boolean;
   disabled?: boolean;
@@ -44,10 +44,6 @@ function FilePreviewImage({ file, alt, sizes }: { file: File; alt: string; sizes
   );
 }
 
-/**
- * Composant pour gérer plusieurs chiens avec informations complètes
- * Chaque chien nécessite: ICAD, nom, sexe, race, date de naissance, photo
- */
 export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
   label = 'Informations de vos chiens',
   error,
@@ -86,7 +82,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    // Valider ICAD
     if (!formData.icadNumber.trim()) {
       errors.icadNumber = 'Numéro ICAD requis';
     } else {
@@ -94,7 +89,6 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
       if (!validation.isValid) {
         errors.icadNumber = validation.message || 'Numéro ICAD invalide';
       } else {
-        // Vérifier si ICAD existe déjà (sauf si on édite)
         const existingIndex = value.findIndex(d => d.icadNumber === formData.icadNumber);
         if (existingIndex !== -1 && existingIndex !== editIndex) {
           errors.icadNumber = 'Ce numéro ICAD existe déjà';
@@ -102,22 +96,18 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
       }
     }
 
-    // Valider nom
     if (!formData.nom.trim()) {
       errors.nom = 'Nom du chien requis';
     }
 
-    // Valider sexe
     if (!formData.sexe) {
       errors.sexe = 'Sexe requis';
     }
 
-    // Valider race
     if (!formData.race.trim()) {
       errors.race = 'Race requise';
     }
 
-    // Valider date de naissance
     if (!formData.dateNaissance) {
       errors.dateNaissance = 'Date de naissance requise';
     } else {
@@ -136,12 +126,10 @@ export const DogInfoInput = memo<DogInfoInputProps>(function DogInfoInput({
     if (!validateForm()) return;
 
     if (editIndex !== null) {
-      // Mode édition
       const newDogs = [...value];
       newDogs[editIndex] = formData;
       onChange(newDogs);
     } else {
-      // Mode ajout
       onChange([...value, formData]);
     }
 

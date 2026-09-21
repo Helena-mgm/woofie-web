@@ -1,11 +1,3 @@
-/**
- * Utilitaires de validation pour les numéros ICAD
- * 
- * Les numéros ICAD peuvent être :
- * - Puce électronique : 15 chiffres (ex: 250269801234567)
- * - Tatouage : ABC123 (3 lettres + 3 chiffres) ou 123456ABC (6 chiffres + 3 lettres)
- */
-
 import { VALIDATION } from '@/infrastructure/config/constants';
 
 export type IcadType = 'microchip' | 'tattoo' | 'unknown';
@@ -13,20 +5,14 @@ export type IcadType = 'microchip' | 'tattoo' | 'unknown';
 export interface IcadValidationResult {
   isValid: boolean;
   type: IcadType;
-  normalized: string; // Numéro nettoyé (sans espaces, uppercase)
+  normalized: string;
   message?: string;
 }
 
-/**
- * Normalise un numéro ICAD (supprime espaces, met en majuscules)
- */
 export function normalizeIcadNumber(icad: string): string {
   return icad.trim().toUpperCase().replace(/\s+/g, '');
 }
 
-/**
- * Détermine le type de numéro ICAD
- */
 export function getIcadType(icad: string): IcadType {
   const normalized = normalizeIcadNumber(icad);
   
@@ -41,9 +27,6 @@ export function getIcadType(icad: string): IcadType {
   return 'unknown';
 }
 
-/**
- * Valide un numéro ICAD et retourne les détails
- */
 export function validateIcadNumber(icad: string): IcadValidationResult {
   if (!icad || icad.trim().length === 0) {
     return {
@@ -76,9 +59,6 @@ export function validateIcadNumber(icad: string): IcadValidationResult {
   };
 }
 
-/**
- * Valide une liste de numéros ICAD
- */
 export function validateIcadNumbers(icads: string[]): {
   isValid: boolean;
   results: IcadValidationResult[];
@@ -97,7 +77,6 @@ export function validateIcadNumbers(icads: string[]): {
     .filter(r => !r.isValid)
     .map(r => r.message || 'Numéro ICAD invalide');
 
-  // Vérifier les doublons
   const normalized = results.map(r => r.normalized);
   const duplicates = normalized.filter((item, index) => normalized.indexOf(item) !== index);
   
@@ -112,20 +91,15 @@ export function validateIcadNumbers(icads: string[]): {
   };
 }
 
-/**
- * Formate un numéro ICAD pour l'affichage
- */
 export function formatIcadNumber(icad: string): string {
   const normalized = normalizeIcadNumber(icad);
   const type = getIcadType(normalized);
 
   if (type === 'microchip') {
-    // Format: 250 269 801 234 567
     return normalized.replace(/(\d{3})(\d{3})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4 $5');
   }
 
   if (type === 'tattoo') {
-    // Format: ABC 123 ou 123456 ABC
     if (/^[A-Z]{3}\d{3}$/.test(normalized)) {
       return normalized.replace(/([A-Z]{3})(\d{3})/, '$1 $2');
     }
@@ -137,9 +111,6 @@ export function formatIcadNumber(icad: string): string {
   return normalized;
 }
 
-/**
- * Hook React pour gérer la validation d'un champ ICAD
- */
 export function useIcadValidation() {
   const validate = (icad: string): string | undefined => {
     const result = validateIcadNumber(icad);
