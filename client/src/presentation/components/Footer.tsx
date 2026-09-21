@@ -129,7 +129,7 @@ export function Footer() {
               <input
                 type="email"
                 placeholder="Votre email"
-                className="flex-1 px-4 py-2 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D2691E]"
+                className="flex-1 px-4 py-2 rounded-full bg-white text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D2691E]"
               />
               <button
                 className="px-6 py-2 bg-[#D2691E] hover:bg-[#FF8C00] hover:scale-105 active:scale-95 rounded-full font-semibold transition-all duration-150"
